@@ -50,15 +50,36 @@ The watcher stops checking after 25 Dec 2026.
 
 Never put the token in the code; the repo is public.
 
-## Run locally
+## How it gets past the blocks
+
+District and BookMyShow reject requests from GitHub's servers (HTTP 403). When
+that happens the watcher re-reads the page through Google Translate's page
+relay, which fetches it from Google's side and returns it intact. PVR INOX's API
+can't go through the relay, so the workflow leaves it out (`WATCH_ONLY`);
+District carries the same INOX showtimes.
+
+If the relay ever stops working you get a "Watcher is blind" alert within about
+an hour. The fallbacks are the manual *Probe booking sites* workflow (tests a
+Cloudflare WARP route) and running the script on a PC as below.
+
+## Optional: also run on a PC (Windows)
 
 ```
-pip install -r requirements.txt
+pip install -r requirements-pc.txt
 python -m playwright install chromium
-python watcher.py
+copy .env.example .env
 ```
 
-Without the two environment variables it does a dry run and prints the messages instead of sending them.
+Put your bot token and chat ID in `.env`, then test with `python watcher.py`.
+Schedule it every 10 minutes (runs hidden, also on battery):
+
+```
+schtasks /Create /TN "Movie booking watch" /SC MINUTE /MO 10 /F /TR "\"C:\Python314\pythonw.exe\" \"%CD%\watcher.py\""
+```
+
+Output goes to `watcher.log`. Remove it later with `schtasks /Delete /TN "Movie booking watch" /F`.
+
+Without a token the script does a dry run and prints the messages instead of sending them.
 
 Tests (offline, no network): `python -m unittest -v`
 

@@ -26,9 +26,29 @@ import feedparser
 import requests
 from bs4 import BeautifulSoup
 
+HERE = pathlib.Path(__file__).resolve().parent
+
+
+def load_dotenv():
+    """Read KEY=VALUE lines from a local .env file (used when running on a PC)."""
+    env_file = HERE / ".env"
+    if not env_file.exists():
+        return
+    for line in env_file.read_text(encoding="utf-8-sig").splitlines():
+        key, sep, value = line.strip().partition("=")
+        if sep and key and not key.startswith("#"):
+            os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+
+
+load_dotenv()
+
 IST = timezone(timedelta(hours=5, minutes=30))
 STOP_AFTER = date(2026, 12, 25)
-STATE_FILE = pathlib.Path(__file__).with_name("state.json")
+# GitHub commits state.json; a PC run keeps its own file so the two never clash.
+ON_GITHUB = bool(os.environ.get("GITHUB_ACTIONS"))
+STATE_FILE = HERE / ("state.json" if ON_GITHUB else "state.local.json")
+LOG_FILE = HERE / "watcher.log"
+WATCH_NAME = os.environ.get("WATCH_NAME") or ("GitHub" if ON_GITHUB else "PC")
 
 CITY = "kolkata"
 IMAX_CINEMA = "south city"  # INOX South City Mall, Kolkata's only IMAX
@@ -115,19 +135,59 @@ class Blocked(Exception):
 
 
 def log(msg):
-    print(f"[{datetime.now(IST):%Y-%m-%d %H:%M:%S}] {msg}", flush=True)
+    line = f"[{datetime.now(IST):%Y-%m-%d %H:%M:%S}] {msg}"
+    if sys.stdout:  # None under pythonw, which the scheduled task uses
+        try:
+            print(line, flush=True)
+        except (UnicodeEncodeError, OSError):  # Windows consoles can't print emoji
+            print(line.encode("ascii", "replace").decode(), flush=True)
+    if not ON_GITHUB:
+        try:
+            if LOG_FILE.exists() and LOG_FILE.stat().st_size > 1_000_000:
+                LOG_FILE.unlink()
+            with LOG_FILE.open("a", encoding="utf-8") as f:
+                f.write(line + "\n")
+        except OSError:
+            pass
 
 
 _cache = {}
+
+# Sites that reject GitHub's servers but can be read through Google Translate's
+# page relay, which fetches the page from Google's side and passes it back intact.
+RELAY_HOSTS = ("district.in", "bookmyshow.com")
+
+
+def relay_url(url):
+    parts = urllib.parse.urlsplit(url)
+    host = parts.netloc.replace("-", "--").replace(".", "-") + ".translate.goog"
+    # nc changes every minute so the relay can't hand back an old copy.
+    extra = f"nc={int(time.time()) // 60}&_x_tr_sl=hi&_x_tr_tl=en&_x_tr_hl=en"
+    query = f"{parts.query}&{extra}" if parts.query else extra
+    return urllib.parse.urlunsplit(("https", host, parts.path, query, ""))
 
 
 def fetch(url, post=None, headers=None):
     """GET (or POST json) with browser-like headers, a timeout and one retry.
 
-    Results are cached for the run so shared feeds are fetched once.
+    Results are cached for the run so shared feeds are fetched once. A blocked
+    GET to a relay-able site is retried once through the relay.
     """
     if url in _cache:
         return _cache[url]
+    host = urllib.parse.urlsplit(url).netloc
+    try:
+        text = _request(url, post, headers)
+    except Blocked:
+        if post is not None or not host.endswith(RELAY_HOSTS):
+            raise
+        text = _request(relay_url(url), None, None)
+        log(f"{host}: direct request blocked, read through relay")
+    _cache[url] = text
+    return text
+
+
+def _request(url, post, headers):
     last = None
     for attempt in range(2):
         try:
@@ -137,7 +197,6 @@ def fetch(url, post=None, headers=None):
             else:
                 r = requests.post(url, headers=h, json=post, timeout=25)
             if r.status_code == 200:
-                _cache[url] = r.text
                 return r.text
             if r.status_code in (403, 429, 503):
                 raise Blocked(f"HTTP {r.status_code}")
@@ -369,20 +428,24 @@ def check_district(state, film):
 # ---------------------------------------------------------- bookmyshow
 
 def bms_snapshot(url):
-    """Load a BookMyShow page in a real browser and return its title, buttons and text.
+    """Return a BookMyShow page's title, button labels and text.
 
-    BookMyShow's Cloudflare rejects plain HTTP clients outright, so this needs
-    Playwright. Without it installed the check falls back to requests.
+    BookMyShow's Cloudflare rejects plain HTTP clients, so the usual route is
+    the relay inside fetch(). If that fails too and Playwright is installed
+    (PC runs), a real browser is tried.
     """
     try:
-        from playwright.sync_api import sync_playwright
-    except ImportError:
         soup = BeautifulSoup(fetch(url), "html.parser")
         return {
             "title": soup.title.get_text() if soup.title else "",
-            "buttons": [el.get_text(strip=True) for el in soup.find_all("button")],
+            "buttons": [el.get_text(" ", strip=True) for el in soup.find_all("button")],
             "text": soup.get_text(" "),
         }
+    except Exception as plain_error:
+        try:
+            from playwright.sync_api import sync_playwright
+        except ImportError:
+            raise plain_error
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         try:
@@ -610,6 +673,25 @@ def status_lines(state):
     return "\n".join(lines)
 
 
+CHECKS = {
+    "district": (check_district, "District"),
+    "pvr": (check_pvr, "PVR INOX"),
+    "bms": (check_bms, "BookMyShow"),
+    "news": (check_news, "Google News"),
+    "youtube": (check_youtube, "YouTube"),
+    "reddit": (check_reddit, "Reddit"),
+}
+
+
+def enabled_checks():
+    """WATCH_ONLY=news,youtube limits a run to those sources; unset means all."""
+    wanted = [n.strip().lower() for n in os.environ.get("WATCH_ONLY", "").split(",") if n.strip()]
+    unknown = [n for n in wanted if n not in CHECKS]
+    if unknown:
+        log(f"WATCH_ONLY has unknown sources {unknown}; valid: {', '.join(CHECKS)}")
+    return [n for n in CHECKS if n in wanted] or list(CHECKS)
+
+
 def main(now=None):
     now = now or datetime.now(IST)
     _cache.clear()
@@ -624,19 +706,23 @@ def main(now=None):
         return 1
 
     state = load_state()
+    names = enabled_checks()
+    # Forget sources this runner no longer checks so they don't linger as red.
+    prefixes = tuple(CHECKS[n][1] for n in names)
+    state["health"] = {k: v for k, v in state["health"].items() if k.startswith(prefixes)}
     for film in FILMS:
-        for check in (
-            check_district, check_pvr, check_bms, check_news, check_youtube, check_reddit
-        ):
+        for name in names:
             try:
-                check(state, film)
+                globals()[CHECKS[name][0].__name__](state, film)
             except Exception as e:  # one source failing must not break the others
-                log(f"{check.__name__} crashed for {film['name']}: {type(e).__name__}: {e}")
+                log(f"{name} check crashed for {film['name']}: {type(e).__name__}: {e}")
 
     days_left = (date(2026, 12, 18) - now.date()).days
-    if not state["started"]:
+    # Announce on the first run, and again whenever the set of sources changes.
+    if not state["started"] or state.get("sources") != names:
+        state["sources"] = names
         state["started"] = send_telegram(
-            "✅ <b>Watcher is live</b>\n"
+            f"✅ <b>Watcher is live ({html.escape(WATCH_NAME)})</b>\n"
             "Watching Kolkata bookings for Dune: Part Three and Avengers: Doomsday "
             f"({days_left} days to release).\n\n{status_lines(state)}"
         )
@@ -648,7 +734,8 @@ def main(now=None):
         and state["last_heartbeat"] != now.strftime("%Y-%m-%d")
     ):
         if send_telegram(
-            f"💓 <b>Weekly heartbeat</b> — still watching, {days_left} days to release.\n\n"
+            f"💓 <b>Weekly heartbeat ({html.escape(WATCH_NAME)})</b> — still watching, "
+            f"{days_left} days to release.\n\n"
             f"{status_lines(state)}"
         ):
             state["last_heartbeat"] = now.strftime("%Y-%m-%d")

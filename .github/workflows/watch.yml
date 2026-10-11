@@ -16,7 +16,7 @@ concurrency:
 jobs:
   watch:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
 
@@ -27,22 +27,13 @@ jobs:
 
       - run: pip install -r requirements.txt
 
-      # Chromium for the BookMyShow check, cached so most runs skip the download.
-      - uses: actions/cache@v4
-        id: browsers
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
-
-      - if: steps.browsers.outputs.cache-hit != 'true'
-        run: python -m playwright install chromium
-
-      - run: python -m playwright install-deps chromium || true
-
       - name: Run watcher
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          # PVR INOX's API rejects GitHub's servers and can't go through the relay,
+          # so it is left out here. District covers the same INOX showtimes.
+          WATCH_ONLY: district,bms,news,youtube,reddit
         run: python watcher.py
 
       # Committing state stops duplicate alerts and keeps the repo active, so

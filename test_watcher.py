@@ -390,6 +390,10 @@ class MainTests(Base):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.state_file = pathlib.Path(self.tmp.name) / "state.json"
+        env = mock.patch.dict("os.environ")  # a local .env must not narrow these runs
+        env.start()
+        self.addCleanup(env.stop)
+        w.os.environ.pop("WATCH_ONLY", None)
         for target, value in (
             ("STATE_FILE", self.state_file),
             ("FILMS", [FILM]),
@@ -416,6 +420,29 @@ class MainTests(Base):
         self.assertIn("Watcher is live", self.sent[0])
         self.assertIn("🔴 BookMyShow", self.sent[0])
         self.assertIn("🟢 PVR INOX Kolkata", self.sent[0])
+
+    def test_watch_only_limits_sources_and_drops_stale_health(self):
+        w.main(self.at(2026, 10, 12))
+        with mock.patch.dict("os.environ", {"WATCH_ONLY": "news, youtube,reddit"}):
+            self.pages[FILM["district"]] = RuntimeError("must not be fetched")
+            w.main(self.at(2026, 10, 12, 13))
+        health = json.loads(self.state_file.read_text(encoding="utf-8"))["health"]
+        self.assertEqual(
+            sorted(k.split(" / ")[0] for k in health), ["Google News", "Reddit", "YouTube", "YouTube"]
+        )
+        self.assertTrue(all(v["status"] == "ok" for v in health.values()))
+
+    def test_live_message_repeats_when_sources_change(self):
+        w.main(self.at(2026, 10, 12))
+        with mock.patch.dict("os.environ", {"WATCH_ONLY": "district,news"}):
+            w.main(self.at(2026, 10, 12, 13))
+            w.main(self.at(2026, 10, 12, 14))
+        self.assertEqual(len(self.sent), 2)
+        self.assertNotIn("PVR INOX", self.sent[1])
+
+    def test_watch_only_typo_falls_back_to_everything(self):
+        with mock.patch.dict("os.environ", {"WATCH_ONLY": "distric"}):
+            self.assertEqual(w.enabled_checks(), list(w.CHECKS))
 
     def test_quiet_runs_do_not_change_state_file(self):
         w.main(self.at(2026, 10, 12))
@@ -463,6 +490,65 @@ class MainTests(Base):
     def test_missing_secrets_fail_loudly_on_actions(self):
         with mock.patch.dict("os.environ", {"GITHUB_ACTIONS": "true"}, clear=True):
             self.assertEqual(w.main(self.at(2026, 10, 12)), 1)
+
+
+class FetchTests(unittest.TestCase):
+    def setUp(self):
+        w._cache.clear()
+        self.calls = []
+        self.responses = {}
+
+        def fake_get(url, headers=None, timeout=None):
+            self.calls.append(url)
+            for part, (status, text) in self.responses.items():
+                if part in url:
+                    return mock.Mock(status_code=status, text=text)
+            raise AssertionError(f"unexpected url {url}")
+
+        for target, fake in (("get", fake_get), ("post", mock.Mock(return_value=mock.Mock(status_code=403)))):
+            p = mock.patch.object(w.requests, target, fake)
+            p.start()
+            self.addCleanup(p.stop)
+        for target in ("log", "time"):
+            p = mock.patch.object(w, target, mock.Mock(time=mock.Mock(return_value=600), sleep=mock.Mock()))
+            p.start()
+            self.addCleanup(p.stop)
+
+    def test_relay_url_shape(self):
+        self.assertEqual(
+            w.relay_url("https://www.district.in/movies/x-MV1?fromdate=2026-12-18"),
+            "https://www-district-in.translate.goog/movies/x-MV1"
+            "?fromdate=2026-12-18&nc=10&_x_tr_sl=hi&_x_tr_tl=en&_x_tr_hl=en",
+        )
+        self.assertTrue(
+            w.relay_url("https://in.bookmyshow.com/movies/a/ET1").startswith(
+                "https://in-bookmyshow-com.translate.goog/movies/a/ET1?nc="
+            )
+        )
+
+    def test_direct_success_does_not_use_relay(self):
+        self.responses = {"www.district.in": (200, "direct")}
+        self.assertEqual(w.fetch("https://www.district.in/movies/x"), "direct")
+        self.assertEqual(len(self.calls), 1)
+
+    def test_blocked_site_falls_back_to_relay_and_caches(self):
+        self.responses = {"www.district.in": (403, ""), "translate.goog": (200, "relayed")}
+        self.assertEqual(w.fetch("https://www.district.in/movies/x"), "relayed")
+        self.assertEqual(w.fetch("https://www.district.in/movies/x"), "relayed")
+        self.assertEqual(len(self.calls), 2)
+
+    def test_relay_also_blocked_raises(self):
+        self.responses = {"www.district.in": (403, ""), "translate.goog": (429, "")}
+        with self.assertRaises(w.Blocked):
+            w.fetch("https://www.district.in/movies/x")
+
+    def test_other_sites_and_posts_never_use_relay(self):
+        self.responses = {"news.google.com": (403, "")}
+        with self.assertRaises(w.Blocked):
+            w.fetch("https://news.google.com/rss")
+        with self.assertRaises(w.Blocked):
+            w.fetch(w.PVR_URL, post={"city": "Kolkata"})
+        self.assertFalse(any("translate.goog" in c for c in self.calls))
 
 
 class TelegramTests(unittest.TestCase):
