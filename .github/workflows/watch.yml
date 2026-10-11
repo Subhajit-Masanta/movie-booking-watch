@@ -31,10 +31,10 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          # District and PVR INOX reject GitHub's servers even through the relay,
-          # so they are left out here. BookMyShow (via the relay) covers booking
-          # and IMAX for Kolkata.
-          WATCH_ONLY: bms,news,youtube,reddit
+          # District rejects GitHub's servers even through the relay, so it is
+          # left out here. BookMyShow (via the relay) and INOX cover booking and
+          # IMAX for Kolkata.
+          WATCH_ONLY: pvr,bms,news,youtube,reddit
         run: python watcher.py
 
       # Committing state stops duplicate alerts and keeps the repo active, so

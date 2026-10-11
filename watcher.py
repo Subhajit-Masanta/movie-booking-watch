@@ -89,19 +89,31 @@ HEADERS = {
     "Accept-Language": "en-IN,en;q=0.9",
 }
 
-# Official PVR INOX booking API (the one pvrcinemas.com itself calls).
-PVR_URL = "https://api3.pvrcinemas.com/api/v1/booking/content/nowshowing"
-PVR_HEADERS = {
-    "Content-Type": "application/json",
-    "city": "Kolkata",
-    "appVersion": "1.0",
-    "platform": "WEBSITE",
-    "country": "INDIA",
-    "chain": "PVR",
-    "Origin": "https://www.pvrcinemas.com",
-    "Referer": "https://www.pvrcinemas.com/",
-}
+# Official PVR INOX booking API, the one inoxmovies.com and pvrcinemas.com call.
+# Both sites share one backend; INOX's host also serves the coming-soon list.
+INOX_API = "https://api3.inoxmovies.com/api/v1/booking/content/"
+PVR_API = "https://api3.pvrcinemas.com/api/v1/booking/content/"
+INOX_URL = INOX_API + "nowshowing"
+INOX_SOON_URL = INOX_API + "comingsoon"
+PVR_URL = PVR_API + "nowshowing"
+INOX_SITE = "https://www.inoxmovies.com/"
 PVR_SITE = "https://www.pvrcinemas.com/"
+
+
+def chain_headers(url):
+    inox = url.startswith(INOX_API)
+    site = INOX_SITE if inox else PVR_SITE
+    return {
+        "Content-Type": "application/json",
+        "city": "Kolkata",
+        "appVersion": "1.0",
+        "platform": "WEBSITE",
+        "country": "INDIA",
+        "chain": "INOX" if inox else "PVR",
+        "Origin": site.rstrip("/"),
+        "Referer": site,
+    }
+
 
 YOUTUBE_CHANNELS = {
     "Warner Bros. India": "UC2FrJXBb3WVAKZ8jpxkZxlA",
@@ -526,26 +538,63 @@ def check_bms(state, film):
 
 # ------------------------------------------------------------- pvr inox
 
+def chain_api(url):
+    return json.loads(fetch(url, post={"city": "Kolkata"}, headers=chain_headers(url)))["output"]
+
+
+def title_matches(film, *names):
+    return any(all(w in str(n or "").lower() for w in film["title_words"]) for n in names)
+
+
 def check_pvr(state, film):
     source = "PVR INOX Kolkata"
-    try:
-        data = json.loads(fetch(PVR_URL, post={"city": "Kolkata"}, headers=PVR_HEADERS))
-        groups = data["output"]["mv"]
-        if not groups:
-            raise ValueError("empty film list")
-    except Blocked as e:
-        return mark_failed(state, source, f"blocked ({e})", PVR_SITE)
-    except Exception as e:
-        return mark_failed(state, source, f"{type(e).__name__}: {e}"[:150], PVR_SITE)
+    groups, error = None, None
+    for url in (INOX_URL, PVR_URL):
+        try:
+            groups = chain_api(url)["mv"]
+            if not groups:
+                raise ValueError("empty film list")
+            break
+        except Exception as e:
+            groups, error = None, e
+    if groups is None:
+        reason = f"blocked ({error})" if isinstance(error, Blocked) else f"{type(error).__name__}: {error}"
+        return mark_failed(state, source, reason[:150], INOX_SITE)
     mark_ok(state, source)
+    books = f"👉 {link(INOX_SITE, 'Book on INOX')} · {link(film['district'], 'District')}"
 
+    # Films on sale (including advance sale) sit in the now-showing list, one
+    # entry per version, e.g. "DUNE: PART THREE (ENGLISH IMAX)".
     variants = []
     for group in groups:
         for f in group.get("films") or [group]:
-            name = str(f.get("filmName") or "")
-            if all(w in name.lower() for w in film["title_words"]):
-                variants.append((name, str(f.get("format") or "")))
-    log(f"{source} / {film['name']}: ok, {len(variants)} listed variants")
+            if title_matches(film, f.get("filmName")):
+                variants.append((str(f.get("filmName")), str(f.get("format") or "")))
+
+    # The coming-soon list shows which formats INOX plans before sales start.
+    planned = []
+    try:
+        for movie in chain_api(INOX_SOON_URL)["movies"]:
+            if title_matches(film, movie.get("filmName"), movie.get("n")):
+                planned = [str(x).lower() for x in movie.get("secondaryFormats") or []]
+                break
+    except Exception as e:
+        log(f"{source}: coming-soon list unavailable ({type(e).__name__})")
+    log(
+        f"{source} / {film['name']}: ok, {len(variants)} versions on sale, "
+        f"planned formats: {', '.join(planned) or 'none listed'}"
+    )
+
+    if "imax" in planned:
+        alert_once(
+            state,
+            f"{film['key']}:inox:imax_planned",
+            f"🗓️ <b>IMAX PLANNED — {html.escape(film['name'])}</b>\n"
+            f"INOX's coming-soon list shows these formats: "
+            f"{html.escape(', '.join(planned))}.\n"
+            f"Booking is not open yet; this only confirms an IMAX release is planned.\n"
+            f"👉 {link(INOX_SITE + 'coming-soon', 'INOX coming soon')}",
+        )
     if not variants:
         return
 
@@ -553,10 +602,10 @@ def check_pvr(state, film):
     alert_once(
         state,
         f"{film['key']}:pvr:listed",
-        f"🎟️ <b>ON PVR INOX BOOKING LIST — {html.escape(film['name'])}</b>\n"
-        f"Kolkata, official PVR INOX site\n"
+        f"🎟️ <b>ON SALE AT INOX — {html.escape(film['name'])}</b>\n"
+        f"Kolkata, official INOX / PVR site\n"
         + "\n".join("• " + html.escape(n) for n in names[:8])
-        + f"\n👉 {link(PVR_SITE, 'Book on PVR INOX')} · {link(film['district'], 'District')}",
+        + "\n" + books,
     )
     imax = sorted({n for n, fmt in variants if "imax" in (n + " " + fmt).lower()})
     if imax:
@@ -564,9 +613,9 @@ def check_pvr(state, film):
             state,
             f"{film['key']}:pvr:imax",
             f"🎬 <b>IMAX CONFIRMED — {html.escape(film['name'])}</b>\n"
-            f"PVR INOX lists an IMAX version for Kolkata (INOX South City is the only IMAX):\n"
+            f"INOX lists an IMAX version for Kolkata (INOX South City is the only IMAX):\n"
             + "\n".join("• " + html.escape(n) for n in imax[:4])
-            + f"\n👉 {link(PVR_SITE, 'Book IMAX on PVR INOX')} · {link(film['district'], 'District')}",
+            + "\n" + books,
         )
 
 

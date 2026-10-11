@@ -9,7 +9,7 @@ Runs free on GitHub Actions every ~10 minutes.
 | Source | What it detects |
 | --- | --- |
 | District (district.in) Kolkata film pages | Real show dates and sessions, cinema names, screen format (IMAX at INOX South City) |
-| PVR INOX official booking list for Kolkata | The film, and its IMAX version, appearing on pvrcinemas.com's bookable list |
+| INOX / PVR official site (inoxmovies.com) for Kolkata | The film and its IMAX version going on sale, and which formats the coming-soon list plans |
 | BookMyShow Kolkata pages (via Playwright) | "I'm interested" turning into a live "Book tickets" button. Skipped silently if Cloudflare blocks GitHub's servers |
 | Google News RSS | India-specific booking headlines from the last 3 days |
 | YouTube: Warner Bros. India, Marvel India | Uploads whose title names the film plus tickets/booking wording |
@@ -22,6 +22,7 @@ there yourself for @WarnerBrosIndia, @Marvel_India, @PicturesPVR and @IMAX.
 
 - 🎟️ **BOOKING OPEN** — showtimes are live
 - 🎬 **IMAX CONFIRMED** — an IMAX session is listed in Kolkata
+- 🗓️ **IMAX PLANNED** — INOX's coming-soon list shows IMAX for the film (booking not open yet)
 - 📅 **BOOKING NEWS** — an India booking headline appeared
 - 📣 **OFFICIAL VIDEO** / 💬 **REDDIT CHATTER** — a studio upload or community post about tickets
 - ⚠️ **Watcher is blind** — a source failed for about an hour, so check manually
@@ -52,16 +53,15 @@ Never put the token in the code; the repo is public.
 
 ## How it gets past the blocks
 
-District, PVR INOX and BookMyShow all reject requests from GitHub's servers
-(HTTP 403). For BookMyShow the watcher re-reads the page through Google
-Translate's page relay, which fetches it from Google's side and returns it
-intact, including the list of bookable formats (so IMAX in Kolkata is detected
-there). District and PVR INOX refuse even that route, so the GitHub workflow
-leaves them out (`WATCH_ONLY`).
+District, INOX and BookMyShow may reject requests from GitHub's servers (HTTP
+403). For BookMyShow the watcher re-reads the page through Google Translate's
+page relay, which fetches it from Google's side and returns it intact, including
+the list of bookable formats (so IMAX in Kolkata is detected there). District
+refuses even that route, so the GitHub workflow leaves it out (`WATCH_ONLY`).
+INOX's API can't use the relay; it is tried directly.
 
-So on GitHub: BookMyShow, Google News, YouTube and Reddit. If BookMyShow stops
-being readable you get a "Watcher is blind" alert within about an hour. Running
-the script on a PC as below adds District and PVR INOX on top.
+If a booking source stops being readable you get a "Watcher is blind" alert
+within about an hour. Running the script on a PC as below adds District on top.
 
 ## Optional: also run on a PC (Windows)
 

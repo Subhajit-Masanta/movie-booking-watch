@@ -231,7 +231,7 @@ class PvrTests(Base):
         w.check_pvr(self.state, FILM)
         w.check_pvr(self.state, FILM)
         self.assertEqual(len(self.sent), 1)
-        self.assertIn("PVR INOX BOOKING LIST", self.sent[0])
+        self.assertIn("ON SALE AT INOX", self.sent[0])
 
     def test_listed_with_imax(self):
         self.pages[w.PVR_URL] = pvr("DUNE: PART THREE (ENGLISH)", "DUNE: PART THREE (ENGLISH IMAX)")
@@ -239,6 +239,43 @@ class PvrTests(Base):
         w.check_pvr(self.state, FILM)
         self.assertEqual(len(self.sent), 2)
         self.assertIn("IMAX CONFIRMED", self.sent[1])
+
+    def soon(self, *formats, name="DUNE: PART THREE (ENGLISH)"):
+        return json.dumps(
+            {"output": {"movies": [{"filmName": name, "n": name, "secondaryFormats": list(formats)}]}}
+        )
+
+    def test_inox_host_is_tried_first_then_pvr(self):
+        self.pages[w.INOX_URL] = pvr("DUNE: PART THREE (ENGLISH IMAX)")
+        self.pages[w.PVR_URL] = RuntimeError("should not be needed")
+        w.check_pvr(self.state, FILM)
+        self.assertEqual(len(self.sent), 2)
+        self.assertIn("ON SALE AT INOX", self.sent[0])
+
+    def test_planned_imax_alerts_once_and_says_not_open(self):
+        self.pages[w.INOX_URL] = pvr("THE ODYSSEY (ENGLISH IMAX)")
+        self.pages[w.INOX_SOON_URL] = self.soon("4dx", "ice", "imax")
+        w.check_pvr(self.state, FILM)
+        w.check_pvr(self.state, FILM)
+        self.assertEqual(len(self.sent), 1)
+        self.assertIn("IMAX PLANNED", self.sent[0])
+        self.assertIn("not open yet", self.sent[0])
+
+    def test_planned_formats_without_imax_or_for_other_film_are_silent(self):
+        self.pages[w.INOX_URL] = pvr("THE ODYSSEY (ENGLISH IMAX)")
+        self.pages[w.INOX_SOON_URL] = self.soon("screen-x", "3d", "4dx")
+        w.check_pvr(self.state, FILM)
+        self.pages[w.INOX_SOON_URL] = self.soon("imax", name="AVENGERS: DOOMSDAY (ENGLISH)")
+        w._cache.clear()
+        w.check_pvr(self.state, FILM)
+        self.assertEqual(self.sent, [])
+
+    def test_coming_soon_failure_does_not_fail_the_source(self):
+        self.pages[w.INOX_URL] = pvr("DUNE: PART THREE (ENGLISH)")
+        self.pages[w.INOX_SOON_URL] = w.Blocked("HTTP 403")
+        w.check_pvr(self.state, FILM)
+        self.assertEqual(self.state["health"]["PVR INOX Kolkata"]["status"], "ok")
+        self.assertEqual(len(self.sent), 1)
 
     def test_empty_or_broken_response_is_a_failure(self):
         for body in ('{"output": {"mv": []}}', '{"status": 403}', "not json"):
