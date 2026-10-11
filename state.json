@@ -2,23 +2,23 @@
   "alerted": {},
   "health": {
     "BookMyShow / Avengers: Doomsday": {
-      "fails": 1,
-      "status": "blocked (Cloudflare)",
+      "fails": 0,
+      "status": "ok",
       "warned": false
     },
     "BookMyShow / Dune: Part Three": {
-      "fails": 1,
-      "status": "blocked (Cloudflare)",
+      "fails": 0,
+      "status": "ok",
       "warned": false
     },
     "District / Avengers: Doomsday": {
-      "fails": 1,
-      "status": "blocked (HTTP 403)",
+      "fails": 2,
+      "status": "RuntimeError: HTTP 400",
       "warned": false
     },
     "District / Dune: Part Three": {
-      "fails": 1,
-      "status": "blocked (HTTP 403)",
+      "fails": 2,
+      "status": "RuntimeError: HTTP 400",
       "warned": false
     },
     "Google News / Avengers: Doomsday": {
@@ -29,11 +29,6 @@
     "Google News / Dune: Part Three": {
       "fails": 0,
       "status": "ok",
-      "warned": false
-    },
-    "PVR INOX Kolkata": {
-      "fails": 2,
-      "status": "blocked (HTTP 403)",
       "warned": false
     },
     "Reddit / r/IMAXIndia": {
@@ -53,5 +48,12 @@
     }
   },
   "last_heartbeat": "2026-10-12",
+  "sources": [
+    "district",
+    "bms",
+    "news",
+    "youtube",
+    "reddit"
+  ],
   "started": true
 }
