@@ -1,0 +1,59 @@
+name: Booking watch
+
+on:
+  schedule:
+    # Every 10 minutes, offset from :00 where GitHub's scheduler is most congested.
+    - cron: "3-59/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: booking-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      # Chromium for the BookMyShow check, cached so most runs skip the download.
+      - uses: actions/cache@v4
+        id: browsers
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+
+      - if: steps.browsers.outputs.cache-hit != 'true'
+        run: python -m playwright install chromium
+
+      - run: python -m playwright install-deps chromium || true
+
+      - name: Run watcher
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python watcher.py
+
+      # Committing state stops duplicate alerts and keeps the repo active, so
+      # GitHub doesn't disable the schedule after 60 quiet days.
+      - name: Save state
+        run: |
+          if [ -n "$(git status --porcelain state.json)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add state.json
+            git commit -m "Update watcher state"
+            git pull --rebase
+            git push
+          fi
