@@ -1,0 +1,57 @@
+{
+  "alerted": {},
+  "health": {
+    "BookMyShow / Avengers: Doomsday": {
+      "fails": 1,
+      "status": "blocked (Cloudflare)",
+      "warned": false
+    },
+    "BookMyShow / Dune: Part Three": {
+      "fails": 1,
+      "status": "blocked (Cloudflare)",
+      "warned": false
+    },
+    "District / Avengers: Doomsday": {
+      "fails": 1,
+      "status": "blocked (HTTP 403)",
+      "warned": false
+    },
+    "District / Dune: Part Three": {
+      "fails": 1,
+      "status": "blocked (HTTP 403)",
+      "warned": false
+    },
+    "Google News / Avengers: Doomsday": {
+      "fails": 0,
+      "status": "ok",
+      "warned": false
+    },
+    "Google News / Dune: Part Three": {
+      "fails": 0,
+      "status": "ok",
+      "warned": false
+    },
+    "PVR INOX Kolkata": {
+      "fails": 2,
+      "status": "blocked (HTTP 403)",
+      "warned": false
+    },
+    "Reddit / r/IMAXIndia": {
+      "fails": 0,
+      "status": "ok",
+      "warned": false
+    },
+    "YouTube / Marvel India": {
+      "fails": 0,
+      "status": "ok",
+      "warned": false
+    },
+    "YouTube / Warner Bros. India": {
+      "fails": 0,
+      "status": "ok",
+      "warned": false
+    }
+  },
+  "last_heartbeat": "2026-10-12",
+  "started": true
+}
