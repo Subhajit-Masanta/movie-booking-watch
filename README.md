@@ -52,15 +52,16 @@ Never put the token in the code; the repo is public.
 
 ## How it gets past the blocks
 
-District and BookMyShow reject requests from GitHub's servers (HTTP 403). When
-that happens the watcher re-reads the page through Google Translate's page
-relay, which fetches it from Google's side and returns it intact. PVR INOX's API
-can't go through the relay, so the workflow leaves it out (`WATCH_ONLY`);
-District carries the same INOX showtimes.
+District, PVR INOX and BookMyShow all reject requests from GitHub's servers
+(HTTP 403). For BookMyShow the watcher re-reads the page through Google
+Translate's page relay, which fetches it from Google's side and returns it
+intact, including the list of bookable formats (so IMAX in Kolkata is detected
+there). District and PVR INOX refuse even that route, so the GitHub workflow
+leaves them out (`WATCH_ONLY`).
 
-If the relay ever stops working you get a "Watcher is blind" alert within about
-an hour. The fallbacks are the manual *Probe booking sites* workflow (tests a
-Cloudflare WARP route) and running the script on a PC as below.
+So on GitHub: BookMyShow, Google News, YouTube and Reddit. If BookMyShow stops
+being readable you get a "Watcher is blind" alert within about an hour. Running
+the script on a PC as below adds District and PVR INOX on top.
 
 ## Optional: also run on a PC (Windows)
 

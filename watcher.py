@@ -427,19 +427,27 @@ def check_district(state, film):
 
 # ---------------------------------------------------------- bookmyshow
 
+def bms_formats(page):
+    """Formats offered in the page's booking dialog, e.g. ['2D', 'IMAX 2D']."""
+    found = set(re.findall(r'"dimension"\s*:\s*"([^"]+)"', page))
+    return sorted(f for f in found if f.lower() != "select all")
+
+
 def bms_snapshot(url):
-    """Return a BookMyShow page's title, button labels and text.
+    """Return a BookMyShow page's title, button labels, text and bookable formats.
 
     BookMyShow's Cloudflare rejects plain HTTP clients, so the usual route is
     the relay inside fetch(). If that fails too and Playwright is installed
     (PC runs), a real browser is tried.
     """
     try:
-        soup = BeautifulSoup(fetch(url), "html.parser")
+        page = fetch(url)
+        soup = BeautifulSoup(page, "html.parser")
         return {
             "title": soup.title.get_text() if soup.title else "",
             "buttons": [el.get_text(" ", strip=True) for el in soup.find_all("button")],
             "text": soup.get_text(" "),
+            "formats": bms_formats(page),
         }
     except Exception as plain_error:
         try:
@@ -465,6 +473,7 @@ def bms_snapshot(url):
                 "title": page.title(),
                 "buttons": [t.strip() for t in page.locator("button").all_inner_texts()],
                 "text": page.inner_text("body"),
+                "formats": bms_formats(page.content()),
             }
         finally:
             browser.close()
@@ -475,31 +484,43 @@ def check_bms(state, film):
     if not url:
         return
     source = f"BookMyShow / {film['name']}"
-    # BookMyShow blocks datacenter IPs much of the time, so failures here never warn.
     try:
         snap = bms_snapshot(url)
     except Exception as e:
-        return mark_failed(state, source, f"{type(e).__name__}: {e}"[:150], url, warn=False)
+        return mark_failed(state, source, f"{type(e).__name__}: {e}"[:150], url)
     title = snap["title"].lower()
     text = snap["text"].lower()
     if "attention required" in title or "just a moment" in title:
-        return mark_failed(state, source, "blocked (Cloudflare)", url, warn=False)
+        return mark_failed(state, source, "blocked (Cloudflare)", url)
     if not all(w in title for w in film["title_words"]):
-        return mark_failed(state, source, "page is not this film", url, warn=False)
+        return mark_failed(state, source, "page is not this film", url)
 
     live = any(b.strip().lower() == "book tickets" for b in snap["buttons"])
     if not live and "interested" not in text:
         # Neither the upcoming nor the bookable layout: don't read it as "not open".
-        return mark_failed(state, source, "unrecognised page layout", url, warn=False)
+        return mark_failed(state, source, "unrecognised page layout", url)
     mark_ok(state, source)
     log(f"{source}: ok, {'BOOK TICKETS button live' if live else 'still upcoming (Interested)'}")
-    if live:
+    if not live:
+        return
+    formats = snap.get("formats") or []
+    books = f"👉 {link(url, 'Book on BookMyShow')} · {link(film['district'], 'District')}"
+    alert_once(
+        state,
+        f"{film['key']}:bms:booking_open",
+        f"🎟️ <b>BOOKING OPEN — {html.escape(film['name'])}</b>\n"
+        f"BookMyShow Kolkata now shows the Book tickets button.\n"
+        + (f"Formats: {html.escape(', '.join(formats))}\n" if formats else "")
+        + books,
+    )
+    imax = [f for f in formats if "imax" in f.lower()]
+    if imax:
         alert_once(
             state,
-            f"{film['key']}:bms:booking_open",
-            f"🎟️ <b>BOOKING OPEN — {html.escape(film['name'])}</b>\n"
-            f"BookMyShow Kolkata now shows the Book tickets button.\n"
-            f"👉 {link(url, 'Book on BookMyShow')} · {link(film['district'], 'District')}",
+            f"{film['key']}:bms:imax",
+            f"🎬 <b>IMAX CONFIRMED — {html.escape(film['name'])}</b>\n"
+            f"BookMyShow offers {html.escape(', '.join(imax))} in Kolkata "
+            f"(INOX South City is the only IMAX).\n" + books,
         )
 
 

@@ -258,7 +258,8 @@ class BmsTests(Base):
     LIVE = {
         "title": "Dune: Part Three (2026) - Movie | Release Date in Kolkata - BookMyShow",
         "buttons": ["Sign in", "Book tickets", "Book tickets"],
-        "text": "In cinemas Dune: Part Three IMAX 2D Book tickets",
+        "text": "In cinemas Dune: Part Three Book tickets",
+        "formats": ["2D", "4DX"],
     }
 
     def run_bms(self, snap, times=1):
@@ -279,11 +280,29 @@ class BmsTests(Base):
         self.assertEqual(len(self.sent), 1)
         self.assertIn("BOOKING OPEN", self.sent[0])
 
-    def test_cloudflare_block_is_silent_forever(self):
-        blocked = {"title": "Attention Required! | Cloudflare", "buttons": [], "text": "blocked"}
-        self.assertNotEqual(self.run_bms(blocked, times=20), "ok")
-        self.assertNotEqual(self.run_bms(w.Blocked("HTTP 403"), times=20), "ok")
+    def test_imax_format_alerts_separately_even_if_it_arrives_later(self):
+        self.run_bms(self.LIVE, times=2)
+        self.assertEqual(len(self.sent), 1)
+        self.assertIn("Formats: 2D, 4DX", self.sent[0])
+        self.run_bms(dict(self.LIVE, formats=["2D", "4DX", "IMAX 2D"]), times=2)
+        self.assertEqual(len(self.sent), 2)
+        self.assertIn("IMAX CONFIRMED", self.sent[1])
+
+    def test_imax_format_while_still_upcoming_does_not_alert(self):
+        self.run_bms(dict(self.UPCOMING, formats=["IMAX 2D"]))
         self.assertEqual(self.sent, [])
+
+    def test_formats_are_read_from_page_data(self):
+        page = '{"formats":[{"dimension":"IMAX 2D"},{"dimension" : "3D SCREEN X"}],"x":{"dimension":"Select all"}}'
+        self.assertEqual(w.bms_formats(page), ["3D SCREEN X", "IMAX 2D"])
+
+    def test_block_warns_once_after_an_hour(self):
+        blocked = {"title": "Attention Required! | Cloudflare", "buttons": [], "text": "blocked"}
+        self.assertNotEqual(self.run_bms(blocked, times=w.BLIND_AFTER - 1), "ok")
+        self.assertEqual(self.sent, [])
+        self.run_bms(w.Blocked("HTTP 403"), times=20)
+        self.assertEqual(len(self.sent), 1)
+        self.assertIn("blind", self.sent[0])
 
     def test_text_mentioning_booking_does_not_alert(self):
         snap = dict(self.UPCOMING, text=self.UPCOMING["text"] + " Book tickets on the app")
@@ -397,7 +416,7 @@ class MainTests(Base):
         for target, value in (
             ("STATE_FILE", self.state_file),
             ("FILMS", [FILM]),
-            ("bms_snapshot", mock.Mock(side_effect=w.Blocked("HTTP 403"))),
+            ("bms_snapshot", mock.Mock(return_value=BmsTests.UPCOMING)),
         ):
             p = mock.patch.object(w, target, value)
             p.start()
@@ -418,7 +437,7 @@ class MainTests(Base):
         self.assertEqual(w.main(self.at(2026, 10, 12, 13)), 0)
         self.assertEqual(len(self.sent), 1)
         self.assertIn("Watcher is live", self.sent[0])
-        self.assertIn("🔴 BookMyShow", self.sent[0])
+        self.assertIn("🟢 BookMyShow", self.sent[0])
         self.assertIn("🟢 PVR INOX Kolkata", self.sent[0])
 
     def test_watch_only_limits_sources_and_drops_stale_health(self):
@@ -446,8 +465,7 @@ class MainTests(Base):
 
     def test_quiet_runs_do_not_change_state_file(self):
         w.main(self.at(2026, 10, 12))
-        for _ in range(w.BLIND_AFTER + 1):  # BookMyShow fail counter reaches its cap
-            w.main(self.at(2026, 10, 12, 13))
+        w.main(self.at(2026, 10, 12, 13))
         before = self.state_file.read_text(encoding="utf-8")
         w.main(self.at(2026, 10, 13))
         self.assertEqual(self.state_file.read_text(encoding="utf-8"), before)
