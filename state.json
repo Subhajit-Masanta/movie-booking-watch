@@ -11,16 +11,6 @@
       "status": "ok",
       "warned": false
     },
-    "District / Avengers: Doomsday": {
-      "fails": 2,
-      "status": "RuntimeError: HTTP 400",
-      "warned": false
-    },
-    "District / Dune: Part Three": {
-      "fails": 2,
-      "status": "RuntimeError: HTTP 400",
-      "warned": false
-    },
     "Google News / Avengers: Doomsday": {
       "fails": 0,
       "status": "ok",
@@ -49,7 +39,6 @@
   },
   "last_heartbeat": "2026-10-12",
   "sources": [
-    "district",
     "bms",
     "news",
     "youtube",
