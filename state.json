@@ -21,6 +21,11 @@
       "status": "ok",
       "warned": false
     },
+    "PVR INOX Kolkata": {
+      "fails": 2,
+      "status": "blocked (HTTP 403)",
+      "warned": false
+    },
     "Reddit / r/IMAXIndia": {
       "fails": 0,
       "status": "ok",
@@ -39,6 +44,7 @@
   },
   "last_heartbeat": "2026-10-12",
   "sources": [
+    "pvr",
     "bms",
     "news",
     "youtube",
