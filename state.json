@@ -22,9 +22,9 @@
       "warned": false
     },
     "PVR INOX Kolkata": {
-      "fails": 4,
+      "fails": 6,
       "status": "blocked (HTTP 403)",
-      "warned": false
+      "warned": true
     },
     "Reddit / r/IMAXIndia": {
       "fails": 0,
@@ -32,13 +32,13 @@
       "warned": false
     },
     "YouTube / Marvel India": {
-      "fails": 0,
-      "status": "ok",
+      "fails": 2,
+      "status": "RuntimeError: HTTP 404",
       "warned": false
     },
     "YouTube / Warner Bros. India": {
-      "fails": 0,
-      "status": "ok",
+      "fails": 2,
+      "status": "RuntimeError: HTTP 404",
       "warned": false
     }
   },
