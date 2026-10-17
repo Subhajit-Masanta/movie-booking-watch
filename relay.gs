@@ -1,16 +1,19 @@
 /**
  * Google Apps Script helper for the booking watcher. Runs free on Google's side.
  *
- * It does two jobs:
+ * It does three jobs:
  *  1. Every 5 minutes it fetches the District pages the watcher asked for and
  *     keeps a fresh copy, then starts the GitHub "Booking watch" run. GitHub's
  *     own schedule is often hours late on free repos.
  *  2. Hands those copies to the watcher on request. District refuses pages
  *     requested on GitHub's behalf, but answers this script's own timer.
+ *  3. Answers "status" messages you send the Telegram bot within seconds,
+ *     once connectTelegram() has been run.
  *
  * Settings live in Project Settings -> Script Properties, never in this code:
  *   GITHUB_TOKEN  fine-grained token with "Actions: Read and write" on the repo
  *   RELAY_KEY     any long random text; the same text goes in GitHub's RELAY_KEY secret
+ *   TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID   same values as the GitHub secrets (job 3 only)
  *
  * After changing this code: Deploy -> Manage deployments -> pencil ->
  * Version: New version -> Deploy. The web app URL stays the same.
@@ -159,6 +162,7 @@ function doPost(e) {
   } catch (err) {
     return reply(400, "bad request");
   }
+  if (req.update_id !== undefined) return telegramUpdate(req);
   if (!prop("RELAY_KEY") || String(req.key || "").trim() !== prop("RELAY_KEY").trim()) {
     return reply(401, "wrong key");
   }
@@ -193,6 +197,120 @@ function doPost(e) {
   } catch (err) {
     return reply(502, String(err));
   }
+}
+
+// ---------------------------------------------------------------- telegram replies
+
+const WEB_APP_URL =
+  "https://script.google.com/macros/s/AKfycbyfs9bNqlQd8oX9GZkEu_7cYxRcFNjuHkU5uvSZPj7flZmVzPb9hwd7mz3kscaYKGUb/exec";
+const STATUS_WORDS = ["status", "working", "alive", "check", "update", "/start"];
+const FILM_NAMES = { dune3: "Dune: Part Three", doomsday: "Avengers: Doomsday" };
+const HELP_TEXT =
+  'Send <b>status</b> (or "working?") and I reply with the status of every source. ' +
+  "Booking alerts arrive on their own.";
+
+/** Run once from the editor: Telegram then delivers your messages here instantly. */
+function connectTelegram() {
+  const res = telegramApi("setWebhook", {
+    url: WEB_APP_URL,
+    allowed_updates: ["message"],
+    drop_pending_updates: true,
+  });
+  Logger.log(res.getContentText());
+}
+
+/** Run to undo connectTelegram(): replies go back to the ~5 minute GitHub runs. */
+function disconnectTelegram() {
+  Logger.log(telegramApi("deleteWebhook", {}).getContentText());
+}
+
+function telegramApi(method, body) {
+  return UrlFetchApp.fetch(`https://api.telegram.org/bot${prop("TELEGRAM_BOT_TOKEN")}/${method}`, {
+    method: "post",
+    contentType: "application/json",
+    payload: JSON.stringify(body),
+    muteHttpExceptions: true,
+  });
+}
+
+function telegramUpdate(update) {
+  // Telegram may deliver the same update again; answer each one only once.
+  const cache = CacheService.getScriptCache();
+  const seen = "tg:" + update.update_id;
+  if (cache.get(seen)) return reply(200, "already answered");
+  cache.put(seen, "1", 21600);
+
+  const msg = update.message || {};
+  if (String((msg.chat || {}).id) !== prop("TELEGRAM_CHAT_ID").trim()) {
+    return reply(200, "ignored"); // only answer you, never strangers who find the bot
+  }
+  const text = String(msg.text || "").toLowerCase();
+  if (!text) return reply(200, "no text");
+  const asked = STATUS_WORDS.some((w) => text.indexOf(w) >= 0);
+  telegramApi("sendMessage", {
+    chat_id: prop("TELEGRAM_CHAT_ID").trim(),
+    text: asked ? statusText(new Date()) : HELP_TEXT,
+    parse_mode: "HTML",
+    disable_web_page_preview: true,
+  });
+  return reply(200, "answered");
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function github(path, accept) {
+  const res = UrlFetchApp.fetch(`https://api.github.com/repos/${REPO}/${path}`, {
+    headers: { Authorization: "Bearer " + prop("GITHUB_TOKEN"), Accept: accept },
+    muteHttpExceptions: true,
+  });
+  if (res.getResponseCode() !== 200) throw new Error(`GitHub ${path}: ${res.getResponseCode()}`);
+  return res.getContentText();
+}
+
+/** The same status the watcher sends, built from what its latest run saved. */
+function statusText(now) {
+  let state;
+  try {
+    state = JSON.parse(github("contents/state.json?ref=main", "application/vnd.github.raw+json"));
+  } catch (err) {
+    return "⚠️ Couldn't read the latest status from GitHub right now. Try again in a minute.";
+  }
+  const tz = "Asia/Kolkata";
+  const health = state.health || {};
+  const names = Object.keys(health).sort();
+  const broken = names.filter((n) => health[n].status !== "ok").length;
+  const headline = broken
+    ? `⚠️ ${broken} of ${names.length} sources failing`
+    : `all ${names.length} sources working`;
+
+  const opened = Object.keys(FILM_NAMES).filter((key) =>
+    Object.keys(state.alerted || {}).some((k) => k.indexOf(key + ":") === 0 && k.indexOf("booking_open") >= 0)
+  ).map((key) => FILM_NAMES[key]);
+  const booking = opened.length ? `Booking open: ${opened.join(", ")}` : "Booking: not open yet for either film";
+  const [y, m, d] = Utilities.formatDate(now, tz, "yyyy-MM-dd").split("-").map(Number);
+  const daysLeft = Math.round((Date.UTC(2026, 11, 18) - Date.UTC(y, m - 1, d)) / 86400000);
+
+  let lastRun = "";
+  try {
+    const run = JSON.parse(github(`actions/workflows/${WORKFLOW}/runs?per_page=1`, "application/vnd.github+json"))
+      .workflow_runs[0];
+    const when = new Date(run.created_at);
+    const mins = Math.round((now - when) / 60000);
+    const result = run.status !== "completed" ? "running now" : run.conclusion === "success" ? "✅" : "❌ " + run.conclusion;
+    lastRun = `\nLast check: ${Utilities.formatDate(when, tz, "h:mm a")} (${mins} min ago) ${result}`;
+  } catch (err) {
+    lastRun = "\nLast check: unknown";
+  }
+
+  const lines = names.map((n) =>
+    health[n].status === "ok" ? `🟢 ${escapeHtml(n)}` : `🔴 ${escapeHtml(n)} — ${escapeHtml(health[n].status)}`
+  );
+  return (
+    `💓 <b>Status ${Utilities.formatDate(now, tz, "h:mm a")}</b> — ${escapeHtml(headline)}\n` +
+    `${escapeHtml(booking)} · ${daysLeft} days to release${lastRun}\n\n${lines.join("\n")}`
+  );
 }
 
 function doGet() {
