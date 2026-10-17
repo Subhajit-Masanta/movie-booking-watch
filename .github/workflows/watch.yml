@@ -31,12 +31,12 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          # District and INOX reject GitHub's servers (HTTP 403) and can't use the
-          # translate relay. They only run here once you set up your own relay
-          # (relay.gs) and add the RELAY_URL and RELAY_KEY secrets.
+          # District and INOX reject GitHub's servers (HTTP 403). District works
+          # through the Google helper (relay.gs) once the RELAY_URL and RELAY_KEY
+          # secrets exist; INOX blocks Google too, so it never runs here.
           RELAY_URL: ${{ secrets.RELAY_URL }}
           RELAY_KEY: ${{ secrets.RELAY_KEY }}
-          WATCH_ONLY: ${{ secrets.RELAY_URL != '' && 'district,pvr,bms,news,youtube,reddit' || 'bms,news,youtube,reddit' }}
+          WATCH_ONLY: ${{ secrets.RELAY_URL != '' && 'district,bms,news,youtube,reddit' || 'bms,news,youtube,reddit' }}
         run: python watcher.py
 
       # Committing state stops duplicate alerts and keeps the repo active, so
