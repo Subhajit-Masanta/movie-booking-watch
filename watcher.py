@@ -216,9 +216,9 @@ def own_relay(url, post, headers):
     Unlike the translate relay it can carry POST requests and custom headers.
     """
     r = requests.post(
-        os.environ["RELAY_URL"],
+        os.environ["RELAY_URL"].strip(),
         json={
-            "key": os.environ.get("RELAY_KEY", ""),
+            "key": os.environ.get("RELAY_KEY", "").strip(),
             "url": url,
             "method": "get" if post is None else "post",
             "headers": {
