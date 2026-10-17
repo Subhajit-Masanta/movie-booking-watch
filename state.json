@@ -55,5 +55,6 @@
     "youtube",
     "reddit"
   ],
-  "started": true
+  "started": true,
+  "telegram_offset": 408281181
 }
