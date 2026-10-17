@@ -11,16 +11,6 @@
       "status": "ok",
       "warned": false
     },
-    "District / Avengers: Doomsday": {
-      "fails": 3,
-      "status": "blocked (HTTP 403 via own relay)",
-      "warned": false
-    },
-    "District / Dune: Part Three": {
-      "fails": 3,
-      "status": "blocked (HTTP 403 via own relay)",
-      "warned": false
-    },
     "Google News / Avengers: Doomsday": {
       "fails": 0,
       "status": "ok",
@@ -49,7 +39,6 @@
   },
   "last_heartbeat": "2026-10-17",
   "sources": [
-    "district",
     "bms",
     "news",
     "youtube",
