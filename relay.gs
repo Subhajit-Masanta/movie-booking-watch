@@ -2,26 +2,32 @@
  * Google Apps Script helper for the booking watcher. Runs free on Google's side.
  *
  * It does two jobs:
- *  1. Starts the GitHub "Booking watch" run every 5 minutes. GitHub's own
- *     schedule is often hours late on free repos.
- *  2. Relays requests to INOX and District, which block GitHub's servers.
+ *  1. Every 5 minutes it fetches the District pages the watcher asked for and
+ *     keeps a fresh copy, then starts the GitHub "Booking watch" run. GitHub's
+ *     own schedule is often hours late on free repos.
+ *  2. Hands those copies to the watcher on request. District refuses pages
+ *     requested on GitHub's behalf, but answers this script's own timer.
  *
  * Settings live in Project Settings -> Script Properties, never in this code:
  *   GITHUB_TOKEN  fine-grained token with "Actions: Read and write" on the repo
  *   RELAY_KEY     any long random text; the same text goes in GitHub's RELAY_KEY secret
  *
- * Setup steps: see "Google helper" in README.md.
+ * After changing this code: Deploy -> Manage deployments -> pencil ->
+ * Version: New version -> Deploy. The web app URL stays the same.
  */
 
 const REPO = "Subhajit-Masanta/movie-booking-watch";
 const WORKFLOW = "watch.yml";
 const ALLOWED = /(^|\.)(inoxmovies\.com|pvrcinemas\.com|district\.in|bookmyshow\.com)$/;
+const COPY_SECONDS = 600; // a fetched copy is served for up to 10 minutes
+const FORGET_MS = 3600 * 1000; // stop refreshing pages nobody asked for in an hour
+const MAX_PAGES = 10; // keeps the timer well inside the free daily run-time quota
 
 function prop(name) {
   return PropertiesService.getScriptProperties().getProperty(name) || "";
 }
 
-// ---------------------------------------------------------------- job 1
+// ---------------------------------------------------------------- timer
 
 /** Run once from the editor: replaces any old schedule with one every 5 minutes. */
 function setup() {
@@ -33,9 +39,14 @@ function setup() {
   Logger.log("Scheduled every 5 minutes, and started one run now.");
 }
 
-/** Asks GitHub to start the watcher workflow. */
+/** Timer job: refresh the page copies, then ask GitHub to start the watcher. */
 function startWatch() {
   if (new Date() > new Date("2026-12-26T00:00:00+05:30")) return; // films are out
+  try {
+    refreshCopies();
+  } catch (err) {
+    Logger.log("Refreshing copies failed: " + err); // still start the watcher
+  }
   const res = UrlFetchApp.fetch(
     `https://api.github.com/repos/${REPO}/actions/workflows/${WORKFLOW}/dispatches`,
     {
@@ -54,7 +65,73 @@ function startWatch() {
   }
 }
 
-// ---------------------------------------------------------------- job 2
+// ---------------------------------------------------------------- page copies
+
+function wanted() {
+  try {
+    return JSON.parse(prop("WANTED") || "{}");
+  } catch (err) {
+    return {};
+  }
+}
+
+function remember(url) {
+  const list = wanted();
+  list[url] = Date.now();
+  const newest = Object.keys(list)
+    .sort((a, b) => list[b] - list[a])
+    .slice(0, MAX_PAGES);
+  const kept = {};
+  newest.forEach((u) => (kept[u] = list[u]));
+  PropertiesService.getScriptProperties().setProperty("WANTED", JSON.stringify(kept));
+}
+
+function copyKey(url) {
+  return "p:" + Utilities.base64EncodeWebSafe(
+    Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, url, Utilities.Charset.UTF_8)
+  );
+}
+
+// The cache holds at most 100 KB per item, and a District page during sales is
+// close to 1 MB, so copies are compressed and split into pieces.
+const PIECE = 90000;
+
+function saveCopy(url, text) {
+  const packed = Utilities.base64Encode(Utilities.gzip(Utilities.newBlob(text, "text/html")).getBytes());
+  const key = copyKey(url);
+  const items = {};
+  let count = 0;
+  for (let i = 0; i < packed.length; i += PIECE) items[`${key}:${count++}`] = packed.slice(i, i + PIECE);
+  items[key] = String(count); // written last in the same call, so readers never see half a copy
+  CacheService.getScriptCache().putAll(items, COPY_SECONDS);
+}
+
+function loadCopy(url) {
+  const cache = CacheService.getScriptCache();
+  const key = copyKey(url);
+  const count = Number(cache.get(key) || 0);
+  if (!count) return null;
+  const names = [];
+  for (let i = 0; i < count; i++) names.push(`${key}:${i}`);
+  const pieces = cache.getAll(names);
+  if (names.some((n) => !pieces[n])) return null; // a piece expired: treat as no copy
+  const blob = Utilities.newBlob(Utilities.base64Decode(names.map((n) => pieces[n]).join("")), "application/x-gzip");
+  return Utilities.ungzip(blob).getDataAsString("UTF-8");
+}
+
+/** Fetches every page the watcher asked for recently and stores a fresh copy. */
+function refreshCopies() {
+  const list = wanted();
+  const now = Date.now();
+  Object.keys(list).forEach((url) => {
+    if (now - list[url] > FORGET_MS) return;
+    const res = UrlFetchApp.fetch(url, { muteHttpExceptions: true, followRedirects: true });
+    if (res.getResponseCode() === 200) saveCopy(url, res.getContentText());
+    Logger.log(`${res.getResponseCode()} ${url}`);
+  });
+}
+
+// ---------------------------------------------------------------- web app
 
 /** Run once from the editor to see whether INOX and District answer Google. */
 function checkSites() {
@@ -82,14 +159,25 @@ function doPost(e) {
   } catch (err) {
     return reply(400, "bad request");
   }
-  if (!prop("RELAY_KEY") || req.key !== prop("RELAY_KEY")) return reply(401, "wrong key");
+  if (!prop("RELAY_KEY") || String(req.key || "").trim() !== prop("RELAY_KEY").trim()) {
+    return reply(401, "wrong key");
+  }
 
   const url = String(req.url || "");
   const host = url.replace(/^https:\/\//, "").split(/[/?#]/)[0];
   if (!url.startsWith("https://") || !ALLOWED.test(host)) return reply(400, "host not allowed");
 
+  const isGet = req.method !== "post";
+  if (isGet) {
+    remember(url); // the timer keeps this page fresh from now on
+    const copy = loadCopy(url);
+    if (copy !== null) return reply(200, copy);
+  }
+
+  // No fresh copy yet: try live. District usually refuses this one, but the
+  // timer will have a copy ready for the next run.
   const options = {
-    method: req.method === "post" ? "post" : "get",
+    method: isGet ? "get" : "post",
     headers: req.headers || {},
     muteHttpExceptions: true,
     followRedirects: true,
@@ -100,6 +188,7 @@ function doPost(e) {
   }
   try {
     const res = UrlFetchApp.fetch(url, options);
+    if (isGet && res.getResponseCode() === 200) saveCopy(url, res.getContentText());
     return reply(res.getResponseCode(), res.getContentText());
   } catch (err) {
     return reply(502, String(err));
