@@ -215,24 +215,30 @@ def own_relay(url, post, headers):
 
     Unlike the translate relay it can carry POST requests and custom headers.
     """
-    r = requests.post(
-        os.environ["RELAY_URL"].strip(),
-        json={
-            "key": os.environ.get("RELAY_KEY", "").strip(),
-            "url": url,
-            "method": "get" if post is None else "post",
-            "headers": {
-                k: v for k, v in {**HEADERS, **(headers or {})}.items()
-                if k.lower() not in ("content-type", "user-agent")
-            },
-            "body": None if post is None else json.dumps(post),
+    payload = {
+        "key": os.environ.get("RELAY_KEY", "").strip(),
+        "url": url,
+        "method": "get" if post is None else "post",
+        "headers": {
+            k: v for k, v in {**HEADERS, **(headers or {})}.items()
+            if k.lower() not in ("content-type", "user-agent")
         },
-        timeout=45,
-    )
-    try:
-        data = r.json()
-        status, body = int(data["status"]), data["body"]
-    except (ValueError, KeyError, TypeError):
+        "body": None if post is None else json.dumps(post),
+    }
+    # Google sometimes answers with an error page (e.g. right after a redeploy),
+    # so one more try before giving up.
+    for attempt in range(2):
+        r = requests.post(os.environ["RELAY_URL"].strip(), json=payload, timeout=60)
+        try:
+            data = r.json()
+            status, body = int(data["status"]), data["body"]
+            break
+        except (ValueError, KeyError, TypeError):
+            page = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", r.text)).strip()
+            log(f"own relay error page (HTTP {r.status_code}): {page[:200]}")
+            if attempt == 0:
+                time.sleep(5)
+    else:
         raise RuntimeError(f"own relay gave an unexpected reply (HTTP {r.status_code})")
     if status == 200:
         return body

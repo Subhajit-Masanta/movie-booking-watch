@@ -598,7 +598,7 @@ class FetchTests(unittest.TestCase):
             w.fetch("https://www.district.in/movies/x")
 
     def own_relay_reply(self, status, body="", http=200, broken=False):
-        reply = mock.Mock(status_code=http)
+        reply = mock.Mock(status_code=http, text="<html><b>Script error</b> try later</html>")
         reply.json = mock.Mock(
             side_effect=ValueError("no json") if broken else None,
             return_value={"status": status, "body": body},
@@ -634,8 +634,18 @@ class FetchTests(unittest.TestCase):
                 w.fetch("https://www.district.in/movies/a")
             with self.own_relay_reply(401), self.assertRaises(w.Blocked):
                 w.fetch("https://www.district.in/movies/b")
-            with self.own_relay_reply(0, broken=True, http=500), self.assertRaises(RuntimeError):
+            with self.own_relay_reply(0, broken=True, http=500) as post, self.assertRaises(RuntimeError):
                 w.fetch("https://www.district.in/movies/c")
+            self.assertEqual(post.call_count, 2)  # retried once
+            self.assertIn("Script error try later", str(w.log.call_args_list))
+
+    def test_own_relay_recovers_on_retry(self):
+        self.responses = {"www.district.in": (403, ""), "translate.goog": (400, "")}
+        bad = mock.Mock(status_code=404, text="<html>Not Found</html>", json=mock.Mock(side_effect=ValueError))
+        good = mock.Mock(status_code=200, json=mock.Mock(return_value={"status": 200, "body": "page"}))
+        with mock.patch.dict("os.environ", {"RELAY_URL": "https://script.test/exec"}):
+            with mock.patch.object(w.requests, "post", mock.Mock(side_effect=[bad, good])):
+                self.assertEqual(w.fetch("https://www.district.in/movies/d"), "page")
 
     def test_other_sites_and_posts_never_use_relay(self):
         self.responses = {"news.google.com": (403, "")}
