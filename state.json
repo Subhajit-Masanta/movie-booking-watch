@@ -12,12 +12,12 @@
       "warned": false
     },
     "District / Avengers: Doomsday": {
-      "fails": 2,
+      "fails": 3,
       "status": "blocked (HTTP 403 via own relay)",
       "warned": false
     },
     "District / Dune: Part Three": {
-      "fails": 2,
+      "fails": 3,
       "status": "blocked (HTTP 403 via own relay)",
       "warned": false
     },
