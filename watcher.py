@@ -805,7 +805,7 @@ def heartbeat_slot(now):
     return f"{now - timedelta(days=1):%Y-%m-%d} {HEARTBEAT_HOURS[-1]:02d}"
 
 
-def heartbeat_text(state, now, days_left):
+def heartbeat_text(state, now, days_left, exact=False):
     total = len(state["health"])
     broken = sum(1 for h in state["health"].values() if h.get("status") != "ok")
     headline = f"all {total} sources working" if not broken else f"⚠️ {broken} of {total} sources failing"
@@ -815,9 +815,58 @@ def heartbeat_text(state, now, days_left):
     )
     booking = f"Booking open: {', '.join(opened)}" if opened else "Booking: not open yet for either film"
     return (
-        f"💓 <b>Status {now.strftime('%I %p').lstrip('0')}</b> ({html.escape(WATCH_NAME)}) — {html.escape(headline)}\n"
+        f"💓 <b>Status {now.strftime('%I:%M %p' if exact else '%I %p').lstrip('0')}</b> "
+        f"({html.escape(WATCH_NAME)}) — {html.escape(headline)}\n"
         f"{html.escape(booking)} · {days_left} days to release\n\n{status_lines(state)}"
     )
+
+
+# Words in a message to the bot that ask for the status.
+STATUS_WORDS = ("status", "working", "alive", "check", "update", "/start")
+HELP_TEXT = (
+    "Send <b>status</b> (or \"working?\") and I reply with the status of every source "
+    "within about 5 minutes. Booking alerts arrive on their own."
+)
+
+
+def answer_messages(state, now, days_left):
+    """Reply to messages sent to the bot since the last run.
+
+    There is no always-on server, so the bot is checked once per run (every
+    ~5 minutes) rather than instantly.
+    """
+    token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    chat_id = str(os.environ.get("TELEGRAM_CHAT_ID", ""))
+    if not token or not chat_id:
+        return
+    offset = state.get("telegram_offset")
+    try:
+        r = requests.get(
+            f"https://api.telegram.org/bot{token}/getUpdates",
+            params={"offset": offset + 1 if offset else None, "timeout": 0},
+            timeout=20,
+        )
+        updates = r.json().get("result", []) if r.ok else []
+    except (requests.RequestException, ValueError) as e:
+        log(f"Reading bot messages failed: {type(e).__name__}")
+        return
+    asked = other = False
+    for u in updates:
+        state["telegram_offset"] = max(u.get("update_id", 0), state.get("telegram_offset") or 0)
+        msg = u.get("message") or {}
+        if str((msg.get("chat") or {}).get("id")) != chat_id:
+            continue  # only answer you, never strangers who find the bot
+        if offset is None and now.timestamp() - msg.get("date", 0) > 900:
+            continue  # first run: ignore old chat history
+        text = str(msg.get("text") or "").lower()
+        if any(word in text for word in STATUS_WORDS):
+            asked = True
+        elif text:
+            other = True
+    if asked:
+        send_telegram(heartbeat_text(state, now, days_left, exact=True))
+    elif other:
+        send_telegram(HELP_TEXT)
 
 
 CHECKS = {
@@ -882,6 +931,7 @@ def main(now=None):
     elif state["last_heartbeat"] != heartbeat_slot(now):
         if send_telegram(heartbeat_text(state, now, days_left), silent=True):
             state["last_heartbeat"] = heartbeat_slot(now)
+    answer_messages(state, now, days_left)
 
     save_state(state)
     return 0

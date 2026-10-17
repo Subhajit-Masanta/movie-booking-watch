@@ -449,7 +449,8 @@ class MainTests(Base):
         env = mock.patch.dict("os.environ")  # a local .env must not narrow these runs
         env.start()
         self.addCleanup(env.stop)
-        w.os.environ.pop("WATCH_ONLY", None)
+        for name in ("WATCH_ONLY", "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "SEND_STATUS", "RELAY_URL"):
+            w.os.environ.pop(name, None)
         for target, value in (
             ("STATE_FILE", self.state_file),
             ("FILMS", [FILM]),
@@ -690,6 +691,63 @@ class FetchTests(unittest.TestCase):
         with self.assertRaises(w.Blocked):
             w.fetch(w.PVR_URL, post={"city": "Kolkata"})
         self.assertFalse(any("translate.goog" in c for c in self.calls))
+
+
+class BotMessageTests(Base):
+    NOW = datetime(2026, 10, 17, 15, 47, tzinfo=w.IST)
+
+    def setUp(self):
+        super().setUp()
+        self.state["health"] = {"BookMyShow / Dune: Part Three": {"status": "ok"}}
+        env = mock.patch.dict("os.environ", {"TELEGRAM_BOT_TOKEN": "t", "TELEGRAM_CHAT_ID": "111"})
+        env.start()
+        self.addCleanup(env.stop)
+
+    def run_bot(self, *messages, chat=111, age=60, ok=True):
+        updates = [
+            {"update_id": 500 + i, "message": {"chat": {"id": chat}, "text": text,
+                                               "date": int(self.NOW.timestamp()) - age}}
+            for i, text in enumerate(messages)
+        ]
+        reply = mock.Mock(ok=ok, json=mock.Mock(return_value={"ok": True, "result": updates}))
+        with mock.patch.object(w.requests, "get", mock.Mock(return_value=reply)) as get:
+            w.answer_messages(self.state, self.NOW, 62)
+        return get
+
+    def test_status_request_gets_one_reply(self):
+        self.run_bot("status", "Is it working?", "status")
+        self.assertEqual(len(self.sent), 1)
+        self.assertIn("Status 3:47 PM", self.sent[0])
+        self.assertIn("all 1 sources working", self.sent[0])
+        self.assertEqual(self.state["telegram_offset"], 502)
+
+    def test_next_run_only_reads_new_messages(self):
+        self.run_bot("status")
+        get = self.run_bot()
+        self.assertEqual(get.call_args.kwargs["params"]["offset"], 501)
+        self.assertEqual(len(self.sent), 1)
+
+    def test_other_text_gets_help(self):
+        self.run_bot("hello")
+        self.assertIn("Send <b>status</b>", self.sent[0])
+
+    def test_strangers_are_ignored(self):
+        self.run_bot("status", chat=999)
+        self.assertEqual(self.sent, [])
+        self.assertEqual(self.state["telegram_offset"], 500)
+
+    def test_old_history_ignored_on_first_run_only(self):
+        self.run_bot("hi", "How", age=3 * 86400)
+        self.assertEqual(self.sent, [])
+        self.run_bot("status", age=3 * 86400)  # later runs answer even if a run was delayed
+        self.assertEqual(len(self.sent), 1)
+
+    def test_telegram_down_is_harmless(self):
+        with mock.patch.object(w.requests, "get", side_effect=w.requests.ConnectionError("x")):
+            w.answer_messages(self.state, self.NOW, 62)
+        self.assertEqual(self.sent, [])
+        self.run_bot("status", ok=False)
+        self.assertEqual(self.sent, [])
 
 
 class TelegramTests(unittest.TestCase):
