@@ -534,6 +534,19 @@ class MainTests(Base):
         self.assertIn("1 of 7 sources failing", text)
         self.assertIn("🔴 Reddit", text)
 
+    def test_manual_status_request_always_sends(self):
+        w.main(self.at(2026, 10, 17, 15))
+        w.main(self.at(2026, 10, 17, 15))
+        self.assertEqual(len(self.sent), 1)
+        with mock.patch.dict("os.environ", {"SEND_STATUS": "true"}):
+            w.main(self.at(2026, 10, 17, 16))
+            w.main(self.at(2026, 10, 17, 16))
+        self.assertEqual(len(self.sent), 3)
+        self.assertIn("Status 4 PM", self.sent[-1])
+        with mock.patch.dict("os.environ", {"SEND_STATUS": "false"}):
+            w.main(self.at(2026, 10, 17, 17))
+        self.assertEqual(len(self.sent), 3)  # unticked box changes nothing
+
     def test_heartbeat_mentions_open_booking(self):
         w.main(self.at(2026, 10, 17, 8))
         state = json.loads(self.state_file.read_text(encoding="utf-8"))

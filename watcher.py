@@ -875,6 +875,10 @@ def main(now=None):
         )
         if state["started"]:
             state["last_heartbeat"] = heartbeat_slot(now)
+    elif os.environ.get("SEND_STATUS", "").lower() == "true":
+        # Asked for by hand (Run workflow with the status box ticked): send now, with sound.
+        if send_telegram(heartbeat_text(state, now, days_left)):
+            state["last_heartbeat"] = heartbeat_slot(now)
     elif state["last_heartbeat"] != heartbeat_slot(now):
         if send_telegram(heartbeat_text(state, now, days_left), silent=True):
             state["last_heartbeat"] = heartbeat_slot(now)

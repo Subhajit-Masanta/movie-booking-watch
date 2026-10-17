@@ -5,6 +5,11 @@ on:
     # Every 10 minutes, offset from :00 where GitHub's scheduler is most congested.
     - cron: "3-59/10 * * * *"
   workflow_dispatch:
+    inputs:
+      status:
+        description: "Send a status message to Telegram now"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -36,6 +41,7 @@ jobs:
           # secrets exist; INOX blocks Google too, so it never runs here.
           RELAY_URL: ${{ secrets.RELAY_URL }}
           RELAY_KEY: ${{ secrets.RELAY_KEY }}
+          SEND_STATUS: ${{ inputs.status }}
           WATCH_ONLY: ${{ secrets.RELAY_URL != '' && 'district,bms,news,youtube,reddit' || 'bms,news,youtube,reddit' }}
         run: python watcher.py
 
