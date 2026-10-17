@@ -294,7 +294,8 @@ def save_state(state):
 
 # ------------------------------------------------------------- telegram
 
-def send_telegram(text):
+def send_telegram(text, silent=False):
+    """silent=True delivers without sound or vibration (used for heartbeats)."""
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
     chat_id = os.environ.get("TELEGRAM_CHAT_ID")
     if not token or not chat_id:
@@ -308,6 +309,7 @@ def send_telegram(text):
                 "text": text,
                 "parse_mode": "HTML",
                 "disable_web_page_preview": True,
+                "disable_notification": silent,
             },
             timeout=20,
         )
@@ -791,6 +793,33 @@ def status_lines(state):
     return "\n".join(lines)
 
 
+# Status messages at these IST hours, every day, whether or not all is well.
+HEARTBEAT_HOURS = (9, 12, 15, 18, 21)
+
+
+def heartbeat_slot(now):
+    """The most recent heartbeat time that has passed, e.g. '2026-10-17 15'."""
+    passed = [h for h in HEARTBEAT_HOURS if h <= now.hour]
+    if passed:
+        return f"{now:%Y-%m-%d} {passed[-1]:02d}"
+    return f"{now - timedelta(days=1):%Y-%m-%d} {HEARTBEAT_HOURS[-1]:02d}"
+
+
+def heartbeat_text(state, now, days_left):
+    total = len(state["health"])
+    broken = sum(1 for h in state["health"].values() if h.get("status") != "ok")
+    headline = f"all {total} sources working" if not broken else f"⚠️ {broken} of {total} sources failing"
+    opened = sorted(
+        film["name"] for film in FILMS
+        if any(k.startswith(film["key"] + ":") and "booking_open" in k for k in state["alerted"])
+    )
+    booking = f"Booking open: {', '.join(opened)}" if opened else "Booking: not open yet for either film"
+    return (
+        f"💓 <b>Status {now.strftime('%I %p').lstrip('0')}</b> ({html.escape(WATCH_NAME)}) — {html.escape(headline)}\n"
+        f"{html.escape(booking)} · {days_left} days to release\n\n{status_lines(state)}"
+    )
+
+
 CHECKS = {
     "district": (check_district, "District"),
     "pvr": (check_pvr, "PVR INOX"),
@@ -845,18 +874,10 @@ def main(now=None):
             f"({days_left} days to release).\n\n{status_lines(state)}"
         )
         if state["started"]:
-            state["last_heartbeat"] = now.strftime("%Y-%m-%d")
-    elif (
-        now.weekday() == 6
-        and now.hour >= 10
-        and state["last_heartbeat"] != now.strftime("%Y-%m-%d")
-    ):
-        if send_telegram(
-            f"💓 <b>Weekly heartbeat ({html.escape(WATCH_NAME)})</b> — still watching, "
-            f"{days_left} days to release.\n\n"
-            f"{status_lines(state)}"
-        ):
-            state["last_heartbeat"] = now.strftime("%Y-%m-%d")
+            state["last_heartbeat"] = heartbeat_slot(now)
+    elif state["last_heartbeat"] != heartbeat_slot(now):
+        if send_telegram(heartbeat_text(state, now, days_left), silent=True):
+            state["last_heartbeat"] = heartbeat_slot(now)
 
     save_state(state)
     return 0

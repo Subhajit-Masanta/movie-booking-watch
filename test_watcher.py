@@ -78,7 +78,7 @@ class Base(unittest.TestCase):
         w._cache.clear()
         self.state = {"alerted": {}, "health": {}, "last_heartbeat": None, "started": True}
 
-        def fake_send(text):
+        def fake_send(text, silent=False):
             if self.send_ok:
                 self.sent.append(text)
             return self.send_ok
@@ -504,20 +504,43 @@ class MainTests(Base):
         w.main(self.at(2026, 10, 12))
         w.main(self.at(2026, 10, 12, 13))
         before = self.state_file.read_text(encoding="utf-8")
-        w.main(self.at(2026, 10, 13))
+        w.main(self.at(2026, 10, 12, 14))  # same 12:00-15:00 heartbeat window, nothing new
         self.assertEqual(self.state_file.read_text(encoding="utf-8"), before)
 
-    def test_heartbeat_only_sunday_after_ten_once(self):
-        w.main(self.at(2026, 10, 12))  # Monday, live message
-        w.main(self.at(2026, 10, 17))  # Saturday
-        w.main(self.at(2026, 10, 18, 9))  # Sunday 09:00
+    def test_five_heartbeats_a_day_once_each(self):
+        w.main(self.at(2026, 10, 17, 8))  # live message, counts for the 21:00 slot of the 16th
+        w.main(self.at(2026, 10, 17, 8))
         self.assertEqual(len(self.sent), 1)
-        w.main(self.at(2026, 10, 18, 10))
-        w.main(self.at(2026, 10, 18, 18))
-        self.assertEqual(len(self.sent), 2)
-        self.assertIn("heartbeat", self.sent[1])
-        w.main(self.at(2026, 10, 25, 23))  # next Sunday, cron ran late
-        self.assertEqual(len(self.sent), 3)
+        for hour in (9, 10, 11, 12, 12, 13, 15, 18, 20, 21, 23):
+            w.main(self.at(2026, 10, 17, hour))
+        self.assertEqual(len(self.sent), 6)  # 9, 12, 15, 18, 21
+        self.assertTrue(all("Status" in t for t in self.sent[1:]))
+        self.assertIn("all 7 sources working", self.sent[1])
+        self.assertIn("not open yet", self.sent[1])
+        w.main(self.at(2026, 10, 18, 2))  # after midnight: the 21:00 one was already sent
+        self.assertEqual(len(self.sent), 6)
+        w.main(self.at(2026, 10, 18, 16))  # runs were stuck for hours: one message, not three
+        self.assertEqual(len(self.sent), 7)
+
+    def test_heartbeat_is_silent_and_reports_failures(self):
+        calls = []
+        with mock.patch.object(w, "send_telegram", lambda text, silent=False: (calls.append((text, silent)), True)[1]):
+            w.main(self.at(2026, 10, 17, 8))
+            self.pages[w.REDDIT_FEED] = RuntimeError("down")
+            w.main(self.at(2026, 10, 17, 9))
+        self.assertFalse(calls[0][1])  # the live message keeps its sound
+        text, silent = calls[-1]
+        self.assertTrue(silent)
+        self.assertIn("1 of 7 sources failing", text)
+        self.assertIn("🔴 Reddit", text)
+
+    def test_heartbeat_mentions_open_booking(self):
+        w.main(self.at(2026, 10, 17, 8))
+        state = json.loads(self.state_file.read_text(encoding="utf-8"))
+        state["alerted"]["dune3:bms:booking_open"] = "2026-10-17 08:10"
+        self.state_file.write_text(json.dumps(state), encoding="utf-8")
+        w.main(self.at(2026, 10, 17, 9))
+        self.assertIn("Booking open: Dune: Part Three", self.sent[-1])
 
     def test_stops_after_cutoff(self):
         w.main(self.at(2026, 12, 25))
@@ -666,6 +689,9 @@ class TelegramTests(unittest.TestCase):
                 post.return_value = mock.Mock(ok=True)
                 self.assertTrue(w.send_telegram("x"))
                 self.assertEqual(post.call_args.kwargs["json"]["parse_mode"], "HTML")
+                self.assertFalse(post.call_args.kwargs["json"]["disable_notification"])
+                w.send_telegram("x", silent=True)
+                self.assertTrue(post.call_args.kwargs["json"]["disable_notification"])
                 post.side_effect = w.requests.ConnectionError("down")
                 self.assertFalse(w.send_telegram("x"))
 
