@@ -12,13 +12,13 @@
       "warned": false
     },
     "District / Avengers: Doomsday": {
-      "fails": 4,
-      "status": "blocked (HTTP 403 via own relay)",
+      "fails": 5,
+      "status": "RuntimeError: own relay gave an unexpected reply (HTTP 200)",
       "warned": false
     },
     "District / Dune: Part Three": {
-      "fails": 4,
-      "status": "blocked (HTTP 403 via own relay)",
+      "fails": 5,
+      "status": "RuntimeError: own relay gave an unexpected reply (HTTP 404)",
       "warned": false
     },
     "Google News / Avengers: Doomsday": {
