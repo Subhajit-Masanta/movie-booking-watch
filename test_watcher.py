@@ -597,6 +597,46 @@ class FetchTests(unittest.TestCase):
         with self.assertRaises(w.Blocked):
             w.fetch("https://www.district.in/movies/x")
 
+    def own_relay_reply(self, status, body="", http=200, broken=False):
+        reply = mock.Mock(status_code=http)
+        reply.json = mock.Mock(
+            side_effect=ValueError("no json") if broken else None,
+            return_value={"status": status, "body": body},
+        )
+        return mock.patch.object(w.requests, "post", mock.Mock(return_value=reply))
+
+    def test_own_relay_carries_blocked_post_with_headers(self):
+        env = {"RELAY_URL": "https://script.test/exec", "RELAY_KEY": "k"}
+        with mock.patch.dict("os.environ", env), self.own_relay_reply(200, "inox-json") as post:
+            # first call is the direct POST (403), second goes to the relay
+            post.side_effect = [mock.Mock(status_code=403), post.return_value]
+            text = w.fetch(w.INOX_URL, post={"city": "Kolkata"}, headers=w.chain_headers(w.INOX_URL))
+        self.assertEqual(text, "inox-json")
+        sent = post.call_args.kwargs["json"]
+        self.assertEqual(post.call_args.args[0], "https://script.test/exec")
+        self.assertEqual((sent["key"], sent["method"], sent["url"]), ("k", "post", w.INOX_URL))
+        self.assertEqual(sent["headers"]["city"], "Kolkata")
+        self.assertEqual(json.loads(sent["body"]), {"city": "Kolkata"})
+        self.assertNotIn("Content-Type", sent["headers"])
+
+    def test_own_relay_is_second_choice_for_district(self):
+        self.responses = {"www.district.in": (403, ""), "translate.goog": (400, "")}
+        env = {"RELAY_URL": "https://script.test/exec"}
+        with mock.patch.dict("os.environ", env), self.own_relay_reply(200, "page"):
+            self.assertEqual(w.fetch("https://www.district.in/movies/x"), "page")
+        self.assertEqual(sum("translate.goog" in c for c in self.calls), 2)  # tried, with retry
+
+    def test_own_relay_failures_surface(self):
+        self.responses = {"www.district.in": (403, ""), "translate.goog": (400, "")}
+        env = {"RELAY_URL": "https://script.test/exec"}
+        with mock.patch.dict("os.environ", env):
+            with self.own_relay_reply(403), self.assertRaises(w.Blocked):
+                w.fetch("https://www.district.in/movies/a")
+            with self.own_relay_reply(401), self.assertRaises(w.Blocked):
+                w.fetch("https://www.district.in/movies/b")
+            with self.own_relay_reply(0, broken=True, http=500), self.assertRaises(RuntimeError):
+                w.fetch("https://www.district.in/movies/c")
+
     def test_other_sites_and_posts_never_use_relay(self):
         self.responses = {"news.google.com": (403, "")}
         with self.assertRaises(w.Blocked):

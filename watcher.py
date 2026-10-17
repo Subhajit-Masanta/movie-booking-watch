@@ -190,13 +190,55 @@ def fetch(url, post=None, headers=None):
     host = urllib.parse.urlsplit(url).netloc
     try:
         text = _request(url, post, headers)
-    except Blocked:
-        if post is not None or not host.endswith(RELAY_HOSTS):
-            raise
-        text = _request(relay_url(url), None, None)
-        log(f"{host}: direct request blocked, read through relay")
+    except Blocked as blocked:
+        routes = []
+        if post is None and host.endswith(RELAY_HOSTS):
+            routes.append(("relay", lambda: _request(relay_url(url), None, None)))
+        if os.environ.get("RELAY_URL"):
+            routes.append(("own relay", lambda: own_relay(url, post, headers)))
+        last = blocked
+        for name, route in routes:
+            try:
+                text = route()
+                log(f"{host}: direct request blocked, read through {name}")
+                break
+            except Exception as e:
+                last = e
+        else:
+            raise last
     _cache[url] = text
     return text
+
+
+def own_relay(url, post, headers):
+    """Fetch through the user's own Google Apps Script relay (see relay.gs).
+
+    Unlike the translate relay it can carry POST requests and custom headers.
+    """
+    r = requests.post(
+        os.environ["RELAY_URL"],
+        json={
+            "key": os.environ.get("RELAY_KEY", ""),
+            "url": url,
+            "method": "get" if post is None else "post",
+            "headers": {
+                k: v for k, v in {**HEADERS, **(headers or {})}.items()
+                if k.lower() not in ("content-type", "user-agent")
+            },
+            "body": None if post is None else json.dumps(post),
+        },
+        timeout=45,
+    )
+    try:
+        data = r.json()
+        status, body = int(data["status"]), data["body"]
+    except (ValueError, KeyError, TypeError):
+        raise RuntimeError(f"own relay gave an unexpected reply (HTTP {r.status_code})")
+    if status == 200:
+        return body
+    if status in (401, 403, 429, 503):
+        raise Blocked(f"HTTP {status} via own relay")
+    raise RuntimeError(f"HTTP {status} via own relay")
 
 
 def _request(url, post, headers):

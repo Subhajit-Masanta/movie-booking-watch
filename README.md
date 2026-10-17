@@ -53,15 +53,40 @@ Never put the token in the code; the repo is public.
 
 ## How it gets past the blocks
 
-District, INOX and BookMyShow may reject requests from GitHub's servers (HTTP
+District, INOX and BookMyShow all reject requests from GitHub's servers (HTTP
 403). For BookMyShow the watcher re-reads the page through Google Translate's
 page relay, which fetches it from Google's side and returns it intact, including
 the list of bookable formats (so IMAX in Kolkata is detected there). District
-refuses even that route, so the GitHub workflow leaves it out (`WATCH_ONLY`).
-INOX's API can't use the relay; it is tried directly.
+refuses even that route and INOX's API can't use it, so the GitHub workflow
+leaves both out (`WATCH_ONLY`).
 
-If a booking source stops being readable you get a "Watcher is blind" alert
-within about an hour. Running the script on a PC as below adds District on top.
+So on GitHub: BookMyShow, Google News, YouTube and Reddit. If BookMyShow stops
+being readable you get a "Watcher is blind" alert within about an hour. Running
+the script on a PC as below adds District and INOX on top.
+
+## Google helper (recommended): runs every 5 minutes, adds INOX and District
+
+GitHub's own schedule on free repos often runs hours late. `relay.gs` is a free
+Google Apps Script that starts the workflow every 5 minutes, and relays INOX and
+District requests (which block GitHub) from Google's side.
+
+1. **GitHub token.** github.com → Settings → Developer settings → Personal access
+   tokens → Fine-grained tokens → Generate new token. Expiration: 90 days.
+   Repository access: only `movie-booking-watch`. Permissions → Actions:
+   **Read and write**. Copy the token.
+2. **Script.** https://script.google.com → New project. Replace the sample code
+   with `relay.gs`.
+3. **Settings.** Project Settings (gear) → Script Properties → add
+   `GITHUB_TOKEN` (the token) and `RELAY_KEY` (any long random text).
+4. **Schedule.** Back in the editor pick `setup` in the function list → Run →
+   approve the permission prompt. It schedules a run every 5 minutes.
+5. **Check the sites.** Pick `checkSites` → Run. The log says whether INOX and
+   District work through Google.
+6. **Relay (only if step 5 said WORKS).** Deploy → New deployment → gear → Web app,
+   Execute as **Me**, access **Anyone** → Deploy. On GitHub add secrets `RELAY_URL`
+   (the `/exec` URL) and `RELAY_KEY` (same text as in step 3).
+
+To stop it, delete the trigger under Triggers (clock icon) in the script.
 
 ## Optional: also run on a PC (Windows)
 
