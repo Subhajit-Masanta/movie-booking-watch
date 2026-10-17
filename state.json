@@ -12,13 +12,13 @@
       "warned": false
     },
     "District / Avengers: Doomsday": {
-      "fails": 1,
-      "status": "blocked (HTTP 401 via own relay)",
+      "fails": 2,
+      "status": "blocked (HTTP 403 via own relay)",
       "warned": false
     },
     "District / Dune: Part Three": {
-      "fails": 1,
-      "status": "blocked (HTTP 401 via own relay)",
+      "fails": 2,
+      "status": "blocked (HTTP 403 via own relay)",
       "warned": false
     },
     "Google News / Avengers: Doomsday": {
