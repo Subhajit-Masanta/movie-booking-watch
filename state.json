@@ -2,8 +2,8 @@
   "alerted": {},
   "health": {
     "BookMyShow / Avengers: Doomsday": {
-      "fails": 0,
-      "status": "ok",
+      "fails": 1,
+      "status": "page is not this film",
       "warned": false
     },
     "BookMyShow / Dune: Part Three": {
@@ -21,30 +21,24 @@
       "status": "ok",
       "warned": false
     },
-    "PVR INOX Kolkata": {
-      "fails": 6,
-      "status": "blocked (HTTP 403)",
-      "warned": true
-    },
     "Reddit / r/IMAXIndia": {
       "fails": 0,
       "status": "ok",
       "warned": false
     },
     "YouTube / Marvel India": {
-      "fails": 4,
-      "status": "RuntimeError: HTTP 404",
+      "fails": 0,
+      "status": "ok",
       "warned": false
     },
     "YouTube / Warner Bros. India": {
-      "fails": 4,
-      "status": "RuntimeError: HTTP 404",
+      "fails": 0,
+      "status": "ok",
       "warned": false
     }
   },
-  "last_heartbeat": "2026-10-12",
+  "last_heartbeat": "2026-10-17",
   "sources": [
-    "pvr",
     "bms",
     "news",
     "youtube",
