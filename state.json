@@ -22,18 +22,18 @@
       "warned": false
     },
     "Google News / Avengers: Doomsday": {
-      "fails": 1,
-      "status": "all queries failed",
+      "fails": 0,
+      "status": "ok",
       "warned": false
     },
     "Google News / Dune: Part Three": {
-      "fails": 1,
-      "status": "all queries failed",
+      "fails": 0,
+      "status": "ok",
       "warned": false
     },
     "Reddit / r/IMAXIndia": {
-      "fails": 2,
-      "status": "RuntimeError: HTTP 400 via own relay",
+      "fails": 0,
+      "status": "ok",
       "warned": false
     },
     "YouTube / Marvel India": {
