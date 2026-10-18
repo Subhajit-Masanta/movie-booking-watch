@@ -12,8 +12,8 @@
       "warned": false
     },
     "District / Avengers: Doomsday": {
-      "fails": 2,
-      "status": "RuntimeError: own relay gave an unexpected reply (HTTP 200)",
+      "fails": 0,
+      "status": "ok",
       "warned": false
     },
     "District / Dune: Part Three": {
