@@ -12,8 +12,8 @@
       "warned": false
     },
     "District / Avengers: Doomsday": {
-      "fails": 0,
-      "status": "ok",
+      "fails": 1,
+      "status": "RuntimeError: own relay gave an unexpected reply (HTTP 200)",
       "warned": false
     },
     "District / Dune: Part Three": {
@@ -37,12 +37,12 @@
       "warned": false
     },
     "YouTube / Marvel India": {
-      "fails": 4,
+      "fails": 6,
       "status": "RuntimeError: HTTP 404",
       "warned": false
     },
     "YouTube / Warner Bros. India": {
-      "fails": 2,
+      "fails": 4,
       "status": "RuntimeError: HTTP 404",
       "warned": false
     }
