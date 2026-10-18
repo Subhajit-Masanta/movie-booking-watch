@@ -2,8 +2,8 @@
   "alerted": {},
   "health": {
     "BookMyShow / Avengers: Doomsday": {
-      "fails": 0,
-      "status": "ok",
+      "fails": 1,
+      "status": "page is not this film",
       "warned": false
     },
     "BookMyShow / Dune: Part Three": {
