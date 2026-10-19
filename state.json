@@ -12,8 +12,8 @@
       "warned": false
     },
     "District / Avengers: Doomsday": {
-      "fails": 1,
-      "status": "RuntimeError: own relay gave an unexpected reply (HTTP 200)",
+      "fails": 2,
+      "status": "ReadTimeout: HTTPSConnectionPool(host='script.google.com', port=443): Read timed out. (read timeout=60)",
       "warned": false
     },
     "District / Dune: Part Three": {
@@ -37,13 +37,13 @@
       "warned": false
     },
     "YouTube / Marvel India": {
-      "fails": 6,
-      "status": "RuntimeError: HTTP 404",
+      "fails": 0,
+      "status": "ok",
       "warned": false
     },
     "YouTube / Warner Bros. India": {
-      "fails": 6,
-      "status": "RuntimeError: HTTP 404",
+      "fails": 0,
+      "status": "ok",
       "warned": false
     }
   },
