@@ -7,13 +7,13 @@
       "warned": false
     },
     "BookMyShow / Dune: Part Three": {
-      "fails": 0,
-      "status": "ok",
+      "fails": 1,
+      "status": "unrecognised page layout",
       "warned": false
     },
     "District / Avengers: Doomsday": {
-      "fails": 1,
-      "status": "RuntimeError: own relay gave an unexpected reply (HTTP 200)",
+      "fails": 0,
+      "status": "ok",
       "warned": false
     },
     "District / Dune: Part Three": {
