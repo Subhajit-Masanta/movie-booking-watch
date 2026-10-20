@@ -12,8 +12,8 @@
       "warned": false
     },
     "District / Avengers: Doomsday": {
-      "fails": 0,
-      "status": "ok",
+      "fails": 1,
+      "status": "RuntimeError: own relay gave an unexpected reply (HTTP 200)",
       "warned": false
     },
     "District / Dune: Part Three": {
@@ -47,7 +47,7 @@
       "warned": false
     }
   },
-  "last_heartbeat": "2026-10-20 12",
+  "last_heartbeat": "2026-10-20 15",
   "sources": [
     "district",
     "bms",
