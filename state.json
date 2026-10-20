@@ -2,8 +2,8 @@
   "alerted": {},
   "health": {
     "BookMyShow / Avengers: Doomsday": {
-      "fails": 1,
-      "status": "unrecognised page layout",
+      "fails": 0,
+      "status": "ok",
       "warned": false
     },
     "BookMyShow / Dune: Part Three": {
