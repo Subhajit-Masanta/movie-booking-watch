@@ -4,18 +4,18 @@
   },
   "health": {
     "BookMyShow / Avengers: Doomsday": {
-      "fails": 0,
-      "status": "ok",
+      "fails": 1,
+      "status": "unrecognised page layout",
       "warned": false
     },
     "BookMyShow / Dune: Part Three": {
-      "fails": 0,
-      "status": "ok",
+      "fails": 1,
+      "status": "unrecognised page layout",
       "warned": false
     },
     "District / Avengers: Doomsday": {
-      "fails": 1,
-      "status": "ReadTimeout: HTTPSConnectionPool(host='script.google.com', port=443): Read timed out. (read timeout=60)",
+      "fails": 0,
+      "status": "ok",
       "warned": false
     },
     "District / Dune: Part Three": {
