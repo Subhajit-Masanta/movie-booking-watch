@@ -39,13 +39,13 @@
       "warned": false
     },
     "YouTube / Marvel India": {
-      "fails": 0,
-      "status": "ok",
+      "fails": 2,
+      "status": "RuntimeError: HTTP 500",
       "warned": false
     },
     "YouTube / Warner Bros. India": {
-      "fails": 4,
-      "status": "RuntimeError: HTTP 500",
+      "fails": 0,
+      "status": "ok",
       "warned": false
     }
   },
