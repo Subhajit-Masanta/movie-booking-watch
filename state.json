@@ -20,7 +20,7 @@
       "warned": false
     },
     "District / Dune: Part Three": {
-      "fails": 1,
+      "fails": 2,
       "status": "RuntimeError: own relay gave an unexpected reply (HTTP 200)",
       "warned": false
     },
