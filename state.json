@@ -15,8 +15,8 @@
       "warned": false
     },
     "District / Avengers: Doomsday": {
-      "fails": 0,
-      "status": "ok",
+      "fails": 1,
+      "status": "RuntimeError: own relay gave an unexpected reply (HTTP 404)",
       "warned": false
     },
     "District / Dune: Part Three": {
@@ -25,13 +25,13 @@
       "warned": false
     },
     "Google News / Avengers: Doomsday": {
-      "fails": 1,
-      "status": "all queries failed",
+      "fails": 0,
+      "status": "ok",
       "warned": false
     },
     "Google News / Dune: Part Three": {
-      "fails": 1,
-      "status": "all queries failed",
+      "fails": 0,
+      "status": "ok",
       "warned": false
     },
     "Reddit / r/IMAXIndia": {
