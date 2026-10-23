@@ -5,8 +5,8 @@
   },
   "health": {
     "BookMyShow / Avengers: Doomsday": {
-      "fails": 1,
-      "status": "unrecognised page layout",
+      "fails": 0,
+      "status": "ok",
       "warned": false
     },
     "BookMyShow / Dune: Part Three": {
@@ -20,8 +20,8 @@
       "warned": false
     },
     "District / Dune: Part Three": {
-      "fails": 0,
-      "status": "ok",
+      "fails": 1,
+      "status": "RuntimeError: own relay gave an unexpected reply (HTTP 200)",
       "warned": false
     },
     "Google News / Avengers: Doomsday": {
@@ -46,7 +46,7 @@
     },
     "YouTube / Warner Bros. India": {
       "fails": 6,
-      "status": "RuntimeError: HTTP 500",
+      "status": "RuntimeError: HTTP 404",
       "warned": false
     }
   },
