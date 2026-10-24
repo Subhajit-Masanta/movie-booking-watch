@@ -20,8 +20,8 @@
       "warned": false
     },
     "District / Dune: Part Three": {
-      "fails": 0,
-      "status": "ok",
+      "fails": 1,
+      "status": "RuntimeError: own relay gave an unexpected reply (HTTP 200)",
       "warned": false
     },
     "Google News / Avengers: Doomsday": {
@@ -50,7 +50,7 @@
       "warned": false
     }
   },
-  "last_heartbeat": "2026-10-24 09",
+  "last_heartbeat": "2026-10-24 12",
   "sources": [
     "district",
     "bms",
