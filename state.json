@@ -27,13 +27,13 @@
       "warned": false
     },
     "Google News / Avengers: Doomsday": {
-      "fails": 1,
-      "status": "all queries failed",
+      "fails": 0,
+      "status": "ok",
       "warned": false
     },
     "Google News / Dune: Part Three": {
-      "fails": 1,
-      "status": "all queries failed",
+      "fails": 0,
+      "status": "ok",
       "warned": false
     },
     "Reddit / r/IMAXIndia": {
@@ -52,7 +52,7 @@
       "warned": false
     }
   },
-  "last_heartbeat": "2026-10-25 12",
+  "last_heartbeat": "2026-10-25 15",
   "sources": [
     "district",
     "bms",
