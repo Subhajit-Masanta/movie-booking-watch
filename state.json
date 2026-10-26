@@ -7,8 +7,8 @@
   },
   "health": {
     "BookMyShow / Avengers: Doomsday": {
-      "fails": 0,
-      "status": "ok",
+      "fails": 1,
+      "status": "unrecognised page layout",
       "warned": false
     },
     "BookMyShow / Dune: Part Three": {
@@ -52,7 +52,7 @@
       "warned": false
     }
   },
-  "last_heartbeat": "2026-10-26 09",
+  "last_heartbeat": "2026-10-26 12",
   "sources": [
     "district",
     "bms",
