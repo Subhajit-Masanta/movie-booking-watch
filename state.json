@@ -47,8 +47,8 @@
       "warned": false
     },
     "YouTube / Warner Bros. India": {
-      "fails": 4,
-      "status": "RuntimeError: HTTP 500",
+      "fails": 0,
+      "status": "ok",
       "warned": false
     }
   },
