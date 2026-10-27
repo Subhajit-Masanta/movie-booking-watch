@@ -48,11 +48,11 @@
     },
     "YouTube / Warner Bros. India": {
       "fails": 6,
-      "status": "RuntimeError: HTTP 404",
+      "status": "RuntimeError: HTTP 500",
       "warned": false
     }
   },
-  "last_heartbeat": "2026-10-26 21",
+  "last_heartbeat": "2026-10-27 09",
   "sources": [
     "district",
     "bms",
