@@ -27,13 +27,13 @@
       "warned": false
     },
     "Google News / Avengers: Doomsday": {
-      "fails": 1,
-      "status": "all queries failed",
+      "fails": 0,
+      "status": "ok",
       "warned": false
     },
     "Google News / Dune: Part Three": {
-      "fails": 1,
-      "status": "all queries failed",
+      "fails": 0,
+      "status": "ok",
       "warned": false
     },
     "Reddit / r/IMAXIndia": {
@@ -43,7 +43,7 @@
     },
     "YouTube / Marvel India": {
       "fails": 6,
-      "status": "RuntimeError: HTTP 404",
+      "status": "RuntimeError: HTTP 500",
       "warned": false
     },
     "YouTube / Warner Bros. India": {
