@@ -8,8 +8,8 @@
   },
   "health": {
     "BookMyShow / Avengers: Doomsday": {
-      "fails": 1,
-      "status": "Blocked: HTTP 403 via own relay",
+      "fails": 0,
+      "status": "ok",
       "warned": false
     },
     "BookMyShow / Dune: Part Three": {
@@ -43,13 +43,13 @@
       "warned": false
     },
     "YouTube / Marvel India": {
-      "fails": 4,
+      "fails": 6,
       "status": "RuntimeError: HTTP 404",
       "warned": false
     },
     "YouTube / Warner Bros. India": {
-      "fails": 6,
-      "status": "RuntimeError: HTTP 404",
+      "fails": 0,
+      "status": "ok",
       "warned": false
     }
   },
