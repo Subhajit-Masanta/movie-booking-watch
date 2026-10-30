@@ -13,8 +13,8 @@
       "warned": false
     },
     "BookMyShow / Dune: Part Three": {
-      "fails": 1,
-      "status": "unrecognised page layout",
+      "fails": 0,
+      "status": "ok",
       "warned": false
     },
     "District / Avengers: Doomsday": {
@@ -43,12 +43,12 @@
       "warned": false
     },
     "YouTube / Marvel India": {
-      "fails": 4,
+      "fails": 6,
       "status": "RuntimeError: HTTP 404",
       "warned": false
     },
     "YouTube / Warner Bros. India": {
-      "fails": 4,
+      "fails": 6,
       "status": "RuntimeError: HTTP 404",
       "warned": false
     }
