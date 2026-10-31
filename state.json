@@ -43,13 +43,13 @@
       "warned": false
     },
     "YouTube / Marvel India": {
-      "fails": 4,
+      "fails": 6,
       "status": "RuntimeError: HTTP 404",
       "warned": false
     },
     "YouTube / Warner Bros. India": {
       "fails": 6,
-      "status": "RuntimeError: HTTP 500",
+      "status": "RuntimeError: HTTP 404",
       "warned": false
     }
   },
