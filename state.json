@@ -48,8 +48,8 @@
       "warned": false
     },
     "YouTube / Warner Bros. India": {
-      "fails": 0,
-      "status": "ok",
+      "fails": 2,
+      "status": "RuntimeError: HTTP 404",
       "warned": false
     }
   },
