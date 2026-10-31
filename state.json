@@ -38,8 +38,8 @@
       "warned": false
     },
     "Reddit / r/IMAXIndia": {
-      "fails": 0,
-      "status": "ok",
+      "fails": 2,
+      "status": "RuntimeError: HTTP 400 via own relay",
       "warned": false
     },
     "YouTube / Marvel India": {
