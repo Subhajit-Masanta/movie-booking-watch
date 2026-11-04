@@ -13,8 +13,8 @@
       "warned": false
     },
     "BookMyShow / Dune: Part Three": {
-      "fails": 0,
-      "status": "ok",
+      "fails": 1,
+      "status": "Blocked: HTTP 403 via own relay",
       "warned": false
     },
     "District / Avengers: Doomsday": {
@@ -43,7 +43,7 @@
       "warned": false
     },
     "YouTube / Marvel India": {
-      "fails": 2,
+      "fails": 4,
       "status": "RuntimeError: HTTP 404",
       "warned": false
     },
