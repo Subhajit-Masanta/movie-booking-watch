@@ -23,8 +23,8 @@
       "warned": false
     },
     "District / Dune: Part Three": {
-      "fails": 0,
-      "status": "ok",
+      "fails": 1,
+      "status": "ReadTimeout: HTTPSConnectionPool(host='script.googleusercontent.com', port=443): Read timed out. (read timeout=60)",
       "warned": false
     },
     "Google News / Avengers: Doomsday": {
