@@ -23,8 +23,8 @@
       "warned": false
     },
     "District / Dune: Part Three": {
-      "fails": 1,
-      "status": "ReadTimeout: HTTPSConnectionPool(host='script.googleusercontent.com', port=443): Read timed out. (read timeout=60)",
+      "fails": 0,
+      "status": "ok",
       "warned": false
     },
     "Google News / Avengers: Doomsday": {
@@ -43,13 +43,13 @@
       "warned": false
     },
     "YouTube / Marvel India": {
-      "fails": 0,
-      "status": "ok",
+      "fails": 2,
+      "status": "RuntimeError: HTTP 404",
       "warned": false
     },
     "YouTube / Warner Bros. India": {
-      "fails": 2,
-      "status": "RuntimeError: HTTP 404",
+      "fails": 4,
+      "status": "RuntimeError: HTTP 500",
       "warned": false
     }
   },
