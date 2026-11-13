@@ -14,7 +14,7 @@
       "warned": false
     },
     "BookMyShow / Dune: Part Three": {
-      "fails": 2,
+      "fails": 3,
       "status": "Blocked: HTTP 403 via own relay",
       "warned": false
     },
