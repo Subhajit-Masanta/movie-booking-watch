@@ -9,12 +9,12 @@
   },
   "health": {
     "BookMyShow / Avengers: Doomsday": {
-      "fails": 4,
+      "fails": 5,
       "status": "Blocked: HTTP 403 via own relay",
       "warned": false
     },
     "BookMyShow / Dune: Part Three": {
-      "fails": 1,
+      "fails": 2,
       "status": "Blocked: HTTP 403 via own relay",
       "warned": false
     },
@@ -54,7 +54,7 @@
       "warned": false
     }
   },
-  "last_heartbeat": "2026-11-13 18",
+  "last_heartbeat": "2026-11-13 21",
   "sources": [
     "district",
     "bms",
