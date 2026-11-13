@@ -44,8 +44,8 @@
       "warned": false
     },
     "YouTube / Marvel India": {
-      "fails": 0,
-      "status": "ok",
+      "fails": 2,
+      "status": "RuntimeError: HTTP 404",
       "warned": false
     },
     "YouTube / Warner Bros. India": {
@@ -54,7 +54,7 @@
       "warned": false
     }
   },
-  "last_heartbeat": "2026-11-12 21",
+  "last_heartbeat": "2026-11-13 09",
   "sources": [
     "district",
     "bms",
