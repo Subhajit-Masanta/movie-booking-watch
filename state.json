@@ -14,8 +14,8 @@
   },
   "health": {
     "BookMyShow / Avengers: Doomsday": {
-      "fails": 1,
-      "status": "ReadTimeout: HTTPSConnectionPool(host='script.google.com', port=443): Read timed out. (read timeout=60)",
+      "fails": 0,
+      "status": "ok",
       "warned": false
     },
     "BookMyShow / Dune: Part Three": {
