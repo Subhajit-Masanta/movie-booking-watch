@@ -1,5 +1,6 @@
 {
   "alerted": {
+    "doomsday:district:booking_open": "2026-11-16 21:02",
     "doomsday:news:626eed7d1d4f": "2026-11-16 15:06",
     "doomsday:news:74fcfd2a4511": "2026-11-16 19:41",
     "doomsday:news:8adcbd8991ad": "2026-10-25 10:11",
@@ -57,7 +58,7 @@
       "warned": false
     }
   },
-  "last_heartbeat": "2026-11-16 18",
+  "last_heartbeat": "2026-11-16 21",
   "sources": [
     "district",
     "bms",
