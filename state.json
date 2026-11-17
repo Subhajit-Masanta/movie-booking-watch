@@ -7,6 +7,7 @@
     "doomsday:news:56205e1ddf23": "2026-11-17 10:42",
     "doomsday:news:626eed7d1d4f": "2026-11-16 15:06",
     "doomsday:news:74fcfd2a4511": "2026-11-16 19:41",
+    "doomsday:news:7a23ba45d775": "2026-11-17 12:02",
     "doomsday:news:8adcbd8991ad": "2026-10-25 10:11",
     "doomsday:news:f795749ed447": "2026-11-17 08:42",
     "doomsday:news:fb960bac6996": "2026-11-17 11:02",
@@ -64,7 +65,7 @@
       "warned": false
     }
   },
-  "last_heartbeat": "2026-11-17 09",
+  "last_heartbeat": "2026-11-17 12",
   "sources": [
     "district",
     "bms",
