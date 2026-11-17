@@ -75,7 +75,7 @@
       "warned": false
     },
     "Reddit / r/IMAXIndia": {
-      "fails": 2,
+      "fails": 4,
       "status": "RuntimeError: HTTP 400 via own relay",
       "warned": false
     },
