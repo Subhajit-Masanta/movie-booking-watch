@@ -103,8 +103,8 @@
       "warned": false
     },
     "BookMyShow / Dune: Part Three": {
-      "fails": 0,
-      "status": "ok",
+      "fails": 1,
+      "status": "page is not this film",
       "warned": false
     },
     "District / Avengers: Doomsday": {
@@ -143,7 +143,7 @@
       "warned": false
     }
   },
-  "last_heartbeat": "2026-11-21 09",
+  "last_heartbeat": "2026-11-21 12",
   "sources": [
     "district",
     "bms",
