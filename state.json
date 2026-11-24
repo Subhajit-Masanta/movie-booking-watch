@@ -94,6 +94,7 @@
     "doomsday:news:d1f1819ad4f2": "2026-11-22 17:37",
     "doomsday:news:d3a5f01b3a48": "2026-11-17 20:52",
     "doomsday:news:d95c9ecdf9d6": "2026-11-19 14:47",
+    "doomsday:news:de0d6b122498": "2026-11-25 00:52",
     "doomsday:news:df36d0c01f11": "2026-11-20 07:52",
     "doomsday:news:e19db10565f1": "2026-11-23 14:42",
     "doomsday:news:e1d0945d5862": "2026-11-21 15:07",
@@ -151,13 +152,13 @@
       "warned": false
     },
     "Google News / Avengers: Doomsday": {
-      "fails": 1,
-      "status": "all queries failed",
+      "fails": 0,
+      "status": "ok",
       "warned": false
     },
     "Google News / Dune: Part Three": {
-      "fails": 1,
-      "status": "all queries failed",
+      "fails": 0,
+      "status": "ok",
       "warned": false
     },
     "Reddit / r/IMAXIndia": {
