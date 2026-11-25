@@ -154,12 +154,12 @@
       "warned": false
     },
     "Google News / Avengers: Doomsday": {
-      "fails": 1,
+      "fails": 2,
       "status": "all queries failed",
       "warned": false
     },
     "Google News / Dune: Part Three": {
-      "fails": 1,
+      "fails": 2,
       "status": "all queries failed",
       "warned": false
     },
