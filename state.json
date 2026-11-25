@@ -154,13 +154,13 @@
       "warned": false
     },
     "Google News / Avengers: Doomsday": {
-      "fails": 2,
-      "status": "all queries failed",
+      "fails": 0,
+      "status": "ok",
       "warned": false
     },
     "Google News / Dune: Part Three": {
-      "fails": 2,
-      "status": "all queries failed",
+      "fails": 0,
+      "status": "ok",
       "warned": false
     },
     "Reddit / r/IMAXIndia": {
