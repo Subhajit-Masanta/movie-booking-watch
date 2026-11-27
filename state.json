@@ -202,12 +202,12 @@
       "warned": false
     },
     "YouTube / Warner Bros. India": {
-      "fails": 0,
-      "status": "ok",
+      "fails": 2,
+      "status": "RuntimeError: HTTP 400 via own relay",
       "warned": false
     }
   },
-  "last_heartbeat": "2026-11-27 09",
+  "last_heartbeat": "2026-11-27 12",
   "sources": [
     "district",
     "bms",
