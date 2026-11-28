@@ -201,7 +201,7 @@
       "warned": false
     },
     "YouTube / Marvel India": {
-      "fails": 4,
+      "fails": 6,
       "status": "RuntimeError: HTTP 400 via own relay",
       "warned": false
     },
